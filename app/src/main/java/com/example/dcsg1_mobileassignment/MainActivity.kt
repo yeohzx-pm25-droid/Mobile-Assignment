@@ -1,47 +1,45 @@
 package com.example.dcsg1_mobileassignment
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import com.example.dcsg1_mobileassignment.navigation.AppNavigation
 import com.example.dcsg1_mobileassignment.ui.theme.DCSG1_MobileAssignmentTheme
+import io.github.jan.supabase.auth.handleDeeplinks
 
 class MainActivity : ComponentActivity() {
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Handle OAuth callback
+        supabase.handleDeeplinks(intent)
+
         enableEdgeToEdge()
+
         setContent {
             DCSG1_MobileAssignmentTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
+
+                Surface(
+                    color = MaterialTheme.colorScheme.background
+                ) {
+                    AppNavigation()
                 }
+
             }
         }
     }
-}
 
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
 
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    DCSG1_MobileAssignmentTheme {
-        Greeting("Android")
+        setIntent(intent)
+
+        // Handle OAuth callback when app is already running
+        supabase.handleDeeplinks(intent)
     }
 }

@@ -9,3 +9,9 @@ val Pink80 = Color(0xFFEFB8C8)
 val Purple40 = Color(0xFF6650a4)
 val PurpleGrey40 = Color(0xFF625b71)
 val Pink40 = Color(0xFF7D5260)
+
+val GreenPrimary = Color(0xFF2E7D32)      // main green (buttons, headers)
+val GreenPrimaryLight = Color(0xFF60AD5E)  // lighter accent
+val GreenPrimaryDark = Color(0xFF005005)   // darker shade
+val GreenSecondary = Color(0xFF81C784)     // secondary accents
+val GreenBackground = Color(0xFFF1F8E9)    // light green-tinted background
