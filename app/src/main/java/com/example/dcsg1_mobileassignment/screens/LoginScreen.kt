@@ -1,13 +1,47 @@
 package com.example.dcsg1_mobileassignment.screens
 
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import com.example.dcsg1_mobileassignment.R
+import androidx.compose.foundation.background
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Spa
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.example.dcsg1_mobileassignment.communityhelp.screens.CommunityColors
 import com.example.dcsg1_mobileassignment.viewmodel.AuthViewModel
 
 @Composable
@@ -15,264 +49,147 @@ fun LoginScreen(
     navController: NavController,
     authViewModel: AuthViewModel
 ) {
-
-    var email by remember {
-        mutableStateOf("")
-    }
-
-    var password by remember {
-        mutableStateOf("")
-    }
-
-    var message by remember {
-        mutableStateOf("")
-    }
-
-
-    // ==========================================
-    // CHECK IF USER SUCCESSFULLY LOGGED IN
-    // ==========================================
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var message by remember { mutableStateOf("") }
 
     val currentUser = authViewModel.currentUser
 
     LaunchedEffect(currentUser) {
-
         if (currentUser != null) {
-
             navController.navigate("profile") {
-
-                popUpTo("profile") {
+                popUpTo("login") {
                     inclusive = true
                 }
-
+                launchSingleTop = true
             }
-
         }
-
     }
-
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(20.dp),
-
+            .background(CommunityColors.Surface)
+            .padding(horizontal = 26.dp),
         verticalArrangement = Arrangement.Center,
-
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        Image(
+            painter = painterResource(id = R.drawable.screenshot_2026_08_27_221124),
+            contentDescription = "FinGrow Logo",
+            contentScale = ContentScale.Crop,
+            modifier = Modifier
+                .fillMaxWidth(0.6f)
+                .height(140.dp)
+        )
 
+        Spacer(Modifier.height(8.dp))
 
         Text(
-            text = "Login",
-            style = MaterialTheme.typography.headlineMedium
+            text = "Login to continue to FinGrow",
+            color = CommunityColors.TextMuted,
+            fontSize = 12.sp
         )
 
-
-        Spacer(
-            modifier = Modifier.height(20.dp)
-        )
-
-
-        // ==========================================
-        // EMAIL
-        // ==========================================
+        Spacer(Modifier.height(42.dp))
 
         OutlinedTextField(
             value = email,
-
             onValueChange = {
-
                 email = it
                 message = ""
-
             },
-
-            label = {
-                Text("Email")
+            leadingIcon = {
+                Icon(Icons.Filled.Email, contentDescription = null, tint = CommunityColors.TextMuted)
             },
-
+            placeholder = { Text("Email") },
+            singleLine = true,
+            shape = RoundedCornerShape(10.dp),
             modifier = Modifier.fillMaxWidth()
         )
 
-
-        Spacer(
-            modifier = Modifier.height(10.dp)
-        )
-
-
-        // ==========================================
-        // PASSWORD
-        // ==========================================
+        Spacer(Modifier.height(12.dp))
 
         OutlinedTextField(
             value = password,
-
             onValueChange = {
-
                 password = it
                 message = ""
-
             },
-
-            label = {
-                Text("Password")
+            leadingIcon = {
+                Icon(Icons.Filled.Lock, contentDescription = null, tint = CommunityColors.TextMuted)
             },
-
+            placeholder = { Text("Password") },
             visualTransformation = PasswordVisualTransformation(),
-
+            singleLine = true,
+            shape = RoundedCornerShape(10.dp),
             modifier = Modifier.fillMaxWidth()
         )
 
-
-        Spacer(
-            modifier = Modifier.height(15.dp)
-        )
-
-
-        // ==========================================
-        // NORMAL LOGIN
-        // ==========================================
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End
+        ) {
+            TextButton(onClick = { navController.navigate("forgotPassword") }) {
+                Text("Forgot Password?", color = CommunityColors.Green, fontSize = 11.sp)
+            }
+        }
 
         Button(
             onClick = {
-
-                val success = authViewModel.login(
-                    email,
-                    password
-                )
-
+                val success = authViewModel.login(email, password)
                 if (!success) {
-
                     message = "Invalid email or password."
-
                 }
-
             },
-
-            modifier = Modifier.fillMaxWidth()
+            colors = ButtonDefaults.buttonColors(containerColor = CommunityColors.Green),
+            shape = RoundedCornerShape(8.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(50.dp)
         ) {
-
-            Text("Login")
-
+            Text("Login", color = Color.White, fontWeight = FontWeight.Bold)
         }
 
-
-        Spacer(
-            modifier = Modifier.height(10.dp)
-        )
-
-
-        // ==========================================
-        // GOOGLE LOGIN
-        // ==========================================
+        Spacer(Modifier.height(12.dp))
 
         OutlinedButton(
             onClick = {
-
                 message = ""
-
                 authViewModel.loginWithGoogle()
-
             },
-
-            modifier = Modifier.fillMaxWidth()
+            shape = RoundedCornerShape(8.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp)
         ) {
-
-            Text("Continue with Google")
-
+            Text("Login with Google", color = CommunityColors.TextPrimary)
         }
 
+        Spacer(Modifier.height(22.dp))
 
-        Spacer(
-            modifier = Modifier.height(10.dp)
-        )
-
-
-        // ==========================================
-        // FACEBOOK LOGIN
-        // ==========================================
-
-        OutlinedButton(
-            onClick = {
-
-                message = ""
-
-                authViewModel.loginWithFacebook()
-
-            },
-
-            modifier = Modifier.fillMaxWidth()
-        ) {
-
-            Text("Continue with Facebook")
-
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = "Don't have an account? ",
+                color = CommunityColors.TextMuted,
+                fontSize = 12.sp
+            )
+            Text(
+                text = "Register",
+                color = CommunityColors.Green,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.clickable { navController.navigate("register") }
+            )
         }
-
-
-        Spacer(
-            modifier = Modifier.height(10.dp)
-        )
-
-
-        // ==========================================
-        // REGISTER
-        // ==========================================
-
-        OutlinedButton(
-            onClick = {
-
-                navController.navigate("register")
-
-            },
-
-            modifier = Modifier.fillMaxWidth()
-        ) {
-
-            Text("Register")
-
-        }
-
-
-        Spacer(
-            modifier = Modifier.height(10.dp)
-        )
-
-
-        // ==========================================
-        // FORGOT PASSWORD
-        // ==========================================
-
-        TextButton(
-            onClick = {
-
-                navController.navigate("forgotPassword")
-
-            }
-        ) {
-
-            Text("Forgot Password?")
-
-        }
-
-
-        // ==========================================
-        // ERROR MESSAGE
-        // ==========================================
 
         if (message.isNotEmpty()) {
-
-            Spacer(
-                modifier = Modifier.height(10.dp)
-            )
-
+            Spacer(Modifier.height(14.dp))
             Text(
                 text = message,
-                color = MaterialTheme.colorScheme.error
+                color = MaterialTheme.colorScheme.error,
+                fontSize = 12.sp
             )
-
         }
-
     }
-
 }

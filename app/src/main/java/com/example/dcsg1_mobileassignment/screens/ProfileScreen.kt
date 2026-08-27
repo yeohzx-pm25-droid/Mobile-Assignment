@@ -1,12 +1,45 @@
 package com.example.dcsg1_mobileassignment.screens
 
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Logout
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Work
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.example.dcsg1_mobileassignment.communityhelp.model.BottomTab
+import com.example.dcsg1_mobileassignment.communityhelp.screens.CommunityColors
+import com.example.dcsg1_mobileassignment.communityhelp.screens.CommunityScaffold
 import com.example.dcsg1_mobileassignment.viewmodel.AuthViewModel
 
 @Composable
@@ -14,167 +47,176 @@ fun ProfileScreen(
     navController: NavController,
     authViewModel: AuthViewModel
 ) {
-
     val user = authViewModel.currentUser
 
-
     if (user == null) {
-
-        Column(
-            modifier = Modifier.fillMaxSize(),
-
-            verticalArrangement = Arrangement.Center,
-
-            horizontalAlignment = Alignment.CenterHorizontally
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(CommunityColors.Surface),
+            contentAlignment = Alignment.Center
         ) {
-
-            Text("No user is logged in.")
-
-
-            Spacer(
-                modifier = Modifier.height(20.dp)
-            )
-
-
-            Button(
-                onClick = {
-
-                    navController.navigate("login")
-
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("No user is logged in.", color = CommunityColors.TextPrimary)
+                Spacer(Modifier.height(20.dp))
+                Button(onClick = { navController.navigate("login") }) {
+                    Text("Go to Login")
                 }
-            ) {
-
-                Text("Go to Login")
-
             }
-
         }
-
         return
     }
 
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(20.dp),
-
-        verticalArrangement = Arrangement.Center,
-
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-
-
-        Text(
-            text = "Profile",
-
-            style = MaterialTheme.typography.headlineMedium
-        )
-
-
-        Spacer(
-            modifier = Modifier.height(30.dp)
-        )
-
-
-        Card(
-            modifier = Modifier.fillMaxWidth()
+    CommunityScaffold(navController, BottomTab.Profile) { innerPadding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(CommunityColors.Surface)
+                .padding(innerPadding)
         ) {
-
-            Column(
-                modifier = Modifier.padding(16.dp)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(230.dp)
+                    .background(CommunityColors.Green)
+                    .padding(horizontal = 30.dp)
             ) {
-
-
-                // Full Name
-                Text(
-                    text = "Full Name: ${user.fullName}",
-
-                    style = MaterialTheme.typography.bodyLarge
-                )
-
-
-                Spacer(
-                    modifier = Modifier.height(10.dp)
-                )
-
-
-                // Email
-                Text(
-                    text = "Email: ${user.email}",
-
-                    style = MaterialTheme.typography.bodyLarge
-                )
-
-
-                Spacer(
-                    modifier = Modifier.height(10.dp)
-                )
-
-
-                // Phone
-                Text(
-                    text = "Phone: ${user.phone}",
-
-                    style = MaterialTheme.typography.bodyLarge
-                )
-
-            }
-
-        }
-
-
-        Spacer(
-            modifier = Modifier.height(30.dp)
-        )
-
-
-        // Edit Profile
-        Button(
-            onClick = {
-
-                navController.navigate("editProfile")
-
-            },
-
-            modifier = Modifier.fillMaxWidth()
-        ) {
-
-            Text("Edit Profile")
-
-        }
-
-
-        Spacer(
-            modifier = Modifier.height(10.dp)
-        )
-
-
-        // Logout
-        OutlinedButton(
-            onClick = {
-
-                authViewModel.logout()
-
-                navController.navigate("login") {
-
-                    popUpTo("login") {
-
-                        inclusive = true
-
+                Row(
+                    modifier = Modifier.align(Alignment.CenterStart),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(72.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFFE5EFE6)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Person,
+                            contentDescription = null,
+                            tint = Color(0xFF9BA99C),
+                            modifier = Modifier.size(48.dp)
+                        )
                     }
 
+                    Spacer(Modifier.size(18.dp))
+
+                    Column {
+                        Text(
+                            text = user.fullName.ifBlank { "Student" },
+                            color = Color.White,
+                            fontSize = 22.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = user.email,
+                            color = Color.White.copy(alpha = 0.9f),
+                            fontSize = 13.sp
+                        )
+                    }
                 }
 
-            },
+                Icon(
+                    imageVector = Icons.Filled.Edit,
+                    contentDescription = "Edit Profile",
+                    tint = Color.White,
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .size(26.dp)
+                        .clickable { navController.navigate("editProfile") }
+                )
+            }
 
-            modifier = Modifier.fillMaxWidth()
-        ) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(top = 190.dp),
+                color = CommunityColors.Surface,
+                shape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(horizontal = 22.dp, vertical = 34.dp)
+                ) {
+                    Text(
+                        text = "My Activity",
+                        color = CommunityColors.TextPrimary,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold
+                    )
 
-            Text("Logout")
+                    Spacer(Modifier.height(18.dp))
 
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, CommunityColors.FieldBorder)
+                    ) {
+                        Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                            ActivityRow("My Job Applications", "4")
+                            HorizontalDivider(color = CommunityColors.FieldBorder)
+                            ActivityRow("My Posted Jobs", "2")
+                            HorizontalDivider(color = CommunityColors.FieldBorder)
+                            ActivityRow("My Donated Items", "3")
+                            HorizontalDivider(color = CommunityColors.FieldBorder)
+                            ActivityRow("My Reserved Items", "1")
+                        }
+                    }
+
+                    Spacer(Modifier.height(36.dp))
+
+                    OutlinedButton(
+                        onClick = {
+                            authViewModel.logout()
+                            navController.navigate("login") {
+                                popUpTo("login") {
+                                    inclusive = true
+                                }
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(58.dp),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Filled.Logout, contentDescription = null, tint = Color(0xFFE53935))
+                            Spacer(Modifier.size(12.dp))
+                            Text("Logout", color = Color(0xFFE53935), fontSize = 15.sp)
+                        }
+                    }
+                }
+            }
         }
-
     }
+}
 
+@Composable
+private fun ActivityRow(
+    label: String,
+    value: String
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(54.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(Icons.Filled.Work, contentDescription = null, tint = CommunityColors.Green, modifier = Modifier.size(21.dp))
+        Spacer(Modifier.size(14.dp))
+        Text(
+            text = label,
+            color = CommunityColors.TextPrimary,
+            fontSize = 14.sp,
+            modifier = Modifier.weight(1f)
+        )
+        Text(value, color = CommunityColors.TextMuted, fontSize = 14.sp)
+        Spacer(Modifier.size(10.dp))
+        Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = CommunityColors.TextMuted)
+    }
 }

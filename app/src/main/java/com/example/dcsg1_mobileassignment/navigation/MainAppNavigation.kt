@@ -1,0 +1,74 @@
+package com.example.dcsg1_mobileassignment.navigation
+
+import androidx.compose.runtime.Composable
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import com.example.dcsg1_mobileassignment.communityhelp.model.BottomTab
+import com.example.dcsg1_mobileassignment.communityhelp.model.PostType
+import com.example.dcsg1_mobileassignment.communityhelp.screens.BlankCommunityScreen
+import com.example.dcsg1_mobileassignment.communityhelp.screens.CommunityHomeScreen
+import com.example.dcsg1_mobileassignment.screens.CreateCommunityPostScreen
+import com.example.dcsg1_mobileassignment.screens.EditProfileScreen
+import com.example.dcsg1_mobileassignment.screens.ForgotPasswordScreen
+import com.example.dcsg1_mobileassignment.screens.LoginScreen
+import com.example.dcsg1_mobileassignment.screens.ProfileScreen
+import com.example.dcsg1_mobileassignment.screens.RegisterScreen
+import com.example.dcsg1_mobileassignment.viewmodel.AuthViewModel
+
+@Composable
+fun AppNavigation() {
+    val navController = rememberNavController()
+    val authViewModel: AuthViewModel = viewModel()
+
+    NavHost(
+        navController = navController,
+        startDestination = "login"
+    ) {
+        composable("login") {
+            LoginScreen(navController, authViewModel)
+        }
+
+        composable("register") {
+            RegisterScreen(navController, authViewModel)
+        }
+
+        composable("forgotPassword") {
+            ForgotPasswordScreen(navController, authViewModel)
+        }
+
+        // LoginScreen still navigates to "profile"; this route now opens your Home.
+        composable("profile") {
+            CommunityHomeScreen(navController, authViewModel)
+        }
+
+        composable("home") {
+            CommunityHomeScreen(navController, authViewModel)
+        }
+
+        composable("jobs") {
+            BlankCommunityScreen(navController, BottomTab.Jobs)
+        }
+
+        composable("donation") {
+            BlankCommunityScreen(navController, BottomTab.Donation)
+        }
+
+        composable("userProfile") {
+            ProfileScreen(navController, authViewModel)
+        }
+
+        composable("editProfile") {
+            EditProfileScreen(navController, authViewModel)
+        }
+
+        composable("createJob") {
+            CreateCommunityPostScreen(navController, PostType.Job)
+        }
+
+        composable("createDonation") {
+           CreateCommunityPostScreen(navController, PostType.Donation)
+        }
+    }
+}
