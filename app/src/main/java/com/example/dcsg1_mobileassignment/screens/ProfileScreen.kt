@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,7 +18,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Work
 import androidx.compose.material3.Button
@@ -25,9 +25,9 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -167,7 +167,7 @@ fun ProfileScreen(
 
                     Spacer(Modifier.height(36.dp))
 
-                    OutlinedButton(
+                    TextButton(
                         onClick = {
                             authViewModel.logout()
                             navController.navigate("login") {
@@ -176,19 +176,14 @@ fun ProfileScreen(
                                 }
                             }
                         },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(58.dp),
-                        shape = RoundedCornerShape(12.dp)
+                        contentPadding = PaddingValues(0.dp)
                     ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(Icons.Filled.Logout, contentDescription = null, tint = Color(0xFFE53935))
-                            Spacer(Modifier.size(12.dp))
-                            Text("Logout", color = Color(0xFFE53935), fontSize = 15.sp)
-                        }
+                        Text(
+                            text = "Logout",
+                            color = Color(0xFFE53935),
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                 }
             }

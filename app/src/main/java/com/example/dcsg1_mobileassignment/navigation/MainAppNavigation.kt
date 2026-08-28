@@ -2,16 +2,20 @@ package com.example.dcsg1_mobileassignment.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.example.dcsg1_mobileassignment.communityhelp.model.BottomTab
 import com.example.dcsg1_mobileassignment.communityhelp.model.PostType
 import com.example.dcsg1_mobileassignment.communityhelp.screens.BlankCommunityScreen
 import com.example.dcsg1_mobileassignment.communityhelp.screens.CommunityHomeScreen
-import com.example.dcsg1_mobileassignment.screens.CreateCommunityPostScreen
+import com.example.dcsg1_mobileassignment.screens.CreatePostScreen
 import com.example.dcsg1_mobileassignment.screens.EditProfileScreen
 import com.example.dcsg1_mobileassignment.screens.ForgotPasswordScreen
+import com.example.dcsg1_mobileassignment.screens.JobDetailScreen
+import com.example.dcsg1_mobileassignment.screens.JobListScreen
 import com.example.dcsg1_mobileassignment.screens.LoginScreen
 import com.example.dcsg1_mobileassignment.screens.ProfileScreen
 import com.example.dcsg1_mobileassignment.screens.RegisterScreen
@@ -48,7 +52,17 @@ fun AppNavigation() {
         }
 
         composable("jobs") {
-            BlankCommunityScreen(navController, BottomTab.Jobs)
+            JobListScreen(navController)
+        }
+
+        composable(
+            route = "jobDetail/{jobId}",
+            arguments = listOf(navArgument("jobId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            JobDetailScreen(
+                navController = navController,
+                jobId = backStackEntry.arguments?.getString("jobId").orEmpty()
+            )
         }
 
         composable("donation") {
@@ -64,11 +78,11 @@ fun AppNavigation() {
         }
 
         composable("createJob") {
-            CreateCommunityPostScreen(navController, PostType.Job)
+            CreatePostScreen(navController, PostType.Job)
         }
 
         composable("createDonation") {
-           CreateCommunityPostScreen(navController, PostType.Donation)
+           CreatePostScreen(navController, PostType.Donation)
         }
     }
 }
