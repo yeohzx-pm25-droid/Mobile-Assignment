@@ -16,7 +16,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Handle OAuth callback
+        // Handle Auth callback
         supabase.handleDeeplinks(intent)
 
         enableEdgeToEdge()
