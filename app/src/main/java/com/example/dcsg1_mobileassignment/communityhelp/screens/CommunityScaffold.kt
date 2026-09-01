@@ -96,7 +96,10 @@ private fun CommunityBottomBar(
                     .offset(y = 10.dp)
                     .size(48.dp)
                     .background(CommunityColors.Green, CircleShape)
-                    .clickable { navController.navigateSingleTop("createJob") },
+                    .clickable {
+                        val target = if (selected == BottomTab.Donation) "createDonation" else "createJob"
+                        navController.navigateSingleTop(target)
+                    },
                 contentAlignment = Alignment.Center
             ) {
                 Text(
