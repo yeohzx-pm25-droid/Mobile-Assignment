@@ -100,7 +100,9 @@ class AuthViewModel : ViewModel() {
     // ==========================================
     // REGISTER
     // ==========================================
-    suspend fun register(fullName: String, email: String, phone: String, password: String): Boolean {
+    // Returns null on success, or the real error message on failure so the UI
+    // can show what actually went wrong instead of guessing.
+    suspend fun register(fullName: String, email: String, phone: String, password: String): String? {
         return try {
             supabase.auth.signUpWith(Email) {
                 this.email = email
@@ -110,22 +112,26 @@ class AuthViewModel : ViewModel() {
                     put("phone", phone)
                 }
             }
-            true
+            null
         } catch (e: Exception) {
             e.printStackTrace()
-            false
+            println("REGISTER ERROR: ${e.message}")
+            e.message ?: "Registration failed. Please try again."
         }
     }
 
     // ==========================================
     // RESET PASSWORD
     // ==========================================
-    suspend fun resetPassword(email: String, newPassword: String): Boolean {
+    // Returns null on success, or the real error message on failure.
+    suspend fun resetPassword(email: String, newPassword: String): String? {
         return try {
             supabase.auth.resetPasswordForEmail(email)
-            true
+            null
         } catch (e: Exception) {
-            false
+            e.printStackTrace()
+            println("RESET PASSWORD ERROR: ${e.message}")
+            e.message ?: "Failed to send reset link."
         }
     }
 

@@ -68,6 +68,24 @@ object CommunityData {
             payment = "RM80 / day",
             description = "Deliver small parcels around Bayan Lepas.",
             posted = "Posted 5h ago"
+        ),
+        JobPost(
+            id = "job-3",
+            title = "Tuition Teacher (Math)",
+            category = "Part-time",
+            location = "Gelugor, Penang",
+            payment = "RM50 / hour",
+            description = "Teach secondary school mathematics twice a week.",
+            posted = "Posted 1Day ago"
+        ),
+        JobPost(
+            id = "job-4",
+            title = "House Cleaning Assistant",
+            category = "One-Time",
+            location = "Tanjung Tokong, Penang",
+            payment = "RM70 / day",
+            description = "One-off deep cleaning for a small apartment.",
+            posted = "Posted 1Day ago"
         )
     )
 

@@ -56,6 +56,7 @@ fun ForgotPasswordScreen(
     var email by remember { mutableStateOf("") }
     var newPassword by remember { mutableStateOf("") }
     var message by remember { mutableStateOf("") }
+    var isSuccess by remember { mutableStateOf(false) }
     var passwordVisible by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
@@ -154,14 +155,22 @@ fun ForgotPasswordScreen(
                 onClick = {
                     scope.launch {
                         when {
-                            !Validation.isEmailValid(email) -> message = "Invalid email format (e.g. name@domain.com)."
-                            !Validation.isPasswordValid(newPassword) -> message = "Password must be at least 8 characters, include uppercase, number, and special character (@#$%)."
+                            !Validation.isEmailValid(email) -> {
+                                message = "Invalid email format (e.g. name@domain.com)."
+                                isSuccess = false
+                            }
+                            !Validation.isPasswordValid(newPassword) -> {
+                                message = "Password must be at least 8 characters, include uppercase, number, and special character (@#$%)."
+                                isSuccess = false
+                            }
                             else -> {
-                                val success = authViewModel.resetPassword(email, newPassword)
-                                message = if (success) {
-                                    "Password reset link sent to your email."
+                                val error = authViewModel.resetPassword(email, newPassword)
+                                if (error == null) {
+                                    message = "Password reset link sent to your email."
+                                    isSuccess = true
                                 } else {
-                                    "Failed to send reset link."
+                                    message = error
+                                    isSuccess = false
                                 }
                             }
                         }
@@ -180,7 +189,7 @@ fun ForgotPasswordScreen(
                 Spacer(Modifier.height(18.dp))
                 Text(
                     text = message,
-                    color = if (message.contains("successfully")) {
+                    color = if (isSuccess) {
                         CommunityColors.Green
                     } else {
                         MaterialTheme.colorScheme.error

@@ -72,7 +72,7 @@ fun RegisterToHomeScreen(
 
         OutlinedTextField(
             value = fullName,
-            onValueChange = { 
+            onValueChange = {
                 fullName = it
                 fullNameError = false
             },
@@ -85,7 +85,7 @@ fun RegisterToHomeScreen(
 
         OutlinedTextField(
             value = email,
-            onValueChange = { 
+            onValueChange = {
                 email = it
                 emailError = false
             },
@@ -98,7 +98,7 @@ fun RegisterToHomeScreen(
 
         OutlinedTextField(
             value = phone,
-            onValueChange = { 
+            onValueChange = {
                 if (it.length <= 11) {
                     phone = it.filter { char -> char.isDigit() }
                     phoneError = false
@@ -113,7 +113,7 @@ fun RegisterToHomeScreen(
 
         OutlinedTextField(
             value = password,
-            onValueChange = { 
+            onValueChange = {
                 password = it
                 passwordError = false
             },
@@ -166,14 +166,14 @@ fun RegisterToHomeScreen(
 
                     else -> {
                         scope.launch {
-                            val success = authViewModel.register(
+                            val error = authViewModel.register(
                                 fullName = fullName,
                                 email = email,
                                 phone = phone,
                                 password = password
                             )
 
-                            if (success) {
+                            if (error == null) {
                                 authViewModel.login(email, password)
                                 navController.navigate("home") {
                                     popUpTo("login") {
@@ -182,7 +182,8 @@ fun RegisterToHomeScreen(
                                     launchSingleTop = true
                                 }
                             } else {
-                                message = "Registration failed. Email might already exist."
+                                // Show the real reason from Supabase instead of guessing.
+                                message = error
                                 showErrorDialog = true
                             }
                         }

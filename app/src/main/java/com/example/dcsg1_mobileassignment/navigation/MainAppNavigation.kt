@@ -17,6 +17,7 @@ import com.example.dcsg1_mobileassignment.screens.DonationListScreen
 import com.example.dcsg1_mobileassignment.screens.EditProfileScreen
 import com.example.dcsg1_mobileassignment.screens.ForgotPasswordScreen
 import com.example.dcsg1_mobileassignment.screens.JobDetailScreen
+import com.example.dcsg1_mobileassignment.screens.JobFilterScreen
 import com.example.dcsg1_mobileassignment.screens.JobListScreen
 import com.example.dcsg1_mobileassignment.screens.LoginScreen
 import com.example.dcsg1_mobileassignment.screens.ProfileScreen
@@ -56,6 +57,10 @@ fun AppNavigation() {
 
         composable("jobs") {
             JobListScreen(navController)
+        }
+
+        composable("jobFilter") {
+            JobFilterScreen(navController)
         }
 
         composable(
@@ -105,7 +110,7 @@ fun AppNavigation() {
         }
 
         composable("createDonation") {
-           CreatePostScreen(navController, PostType.Donation)
+            CreatePostScreen(navController, PostType.Donation)
         }
     }
 }

@@ -113,7 +113,7 @@ fun RegisterScreen(
 
             OutlinedTextField(
                 value = fullName,
-                onValueChange = { 
+                onValueChange = {
                     fullName = it
                     fullNameError = false
                 },
@@ -138,7 +138,7 @@ fun RegisterScreen(
 
             OutlinedTextField(
                 value = email,
-                onValueChange = { 
+                onValueChange = {
                     email = it
                     emailError = false
                 },
@@ -163,7 +163,7 @@ fun RegisterScreen(
 
             OutlinedTextField(
                 value = password,
-                onValueChange = { 
+                onValueChange = {
                     password = it
                     passwordError = false
                 },
@@ -195,7 +195,7 @@ fun RegisterScreen(
 
             OutlinedTextField(
                 value = phone,
-                onValueChange = { 
+                onValueChange = {
                     if (it.length <= 11) {
                         phone = it.filter { char -> char.isDigit() }
                         phoneError = false
@@ -251,14 +251,14 @@ fun RegisterScreen(
                         }
                         else -> {
                             scope.launch {
-                                val success = authViewModel.register(
+                                val error = authViewModel.register(
                                     fullName = fullName,
                                     email = email,
                                     phone = phone,
                                     password = password
                                 )
 
-                                if (success) {
+                                if (error == null) {
                                     navController.navigate("login") {
                                         popUpTo("login") {
                                             inclusive = false
@@ -266,7 +266,8 @@ fun RegisterScreen(
                                         launchSingleTop = true
                                     }
                                 } else {
-                                    message = "Registration failed. Email might already exist."
+                                    // Show the real reason from Supabase instead of guessing.
+                                    message = error
                                     emailError = true
                                     showErrorDialog = true
                                 }

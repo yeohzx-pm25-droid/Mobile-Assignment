@@ -145,20 +145,28 @@ fun JobDetailScreen(
                     )
                 }
             } else {
+                val alreadyApplied = CommunityStore.appliedJobIds.contains(job.id)
+
                 Button(
                     onClick = {
-                        CommunityStore.applyToJob(job.id)
-                        Toast.makeText(context, "Applied successfully", Toast.LENGTH_SHORT).show()
+                        if (!alreadyApplied) {
+                            CommunityStore.applyToJob(job.id)
+                            Toast.makeText(context, "Applied successfully", Toast.LENGTH_SHORT).show()
+                        }
                     },
+                    enabled = !alreadyApplied,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(58.dp),
                     shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = CommunityColors.Green)
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = CommunityColors.Green,
+                        disabledContainerColor = CommunityColors.FieldBorder
+                    )
                 ) {
                     Text(
-                        text = "Apply Now",
-                        color = Color.White,
+                        text = if (alreadyApplied) "Applied" else "Apply Now",
+                        color = if (alreadyApplied) CommunityColors.TextMuted else Color.White,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold
                     )
