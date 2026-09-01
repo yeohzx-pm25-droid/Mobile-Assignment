@@ -124,22 +124,45 @@ fun JobDetailScreen(
 
             Spacer(Modifier.weight(1f))
 
-            Button(
-                onClick = {
-                    Toast.makeText(context, "Applied successfully", Toast.LENGTH_SHORT).show()
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(58.dp),
-                shape = RoundedCornerShape(10.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = CommunityColors.Green)
-            ) {
-                Text(
-                    text = "Apply Now",
-                    color = Color.White,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold
-                )
+            if (job.mine) {
+                Button(
+                    onClick = {
+                        CommunityStore.deleteJob(job.id)
+                        Toast.makeText(context, "Job deleted successfully", Toast.LENGTH_SHORT).show()
+                        navController.popBackStack()
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(58.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE53935))
+                ) {
+                    Text(
+                        text = "Delete Post",
+                        color = Color.White,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            } else {
+                Button(
+                    onClick = {
+                        CommunityStore.applyToJob(job.id)
+                        Toast.makeText(context, "Applied successfully", Toast.LENGTH_SHORT).show()
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(58.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = CommunityColors.Green)
+                ) {
+                    Text(
+                        text = "Apply Now",
+                        color = Color.White,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
         }
     }

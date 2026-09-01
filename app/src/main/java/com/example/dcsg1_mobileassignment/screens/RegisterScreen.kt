@@ -20,13 +20,20 @@ import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -38,6 +45,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
@@ -55,6 +63,14 @@ fun RegisterScreen(
     var phone by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var message by remember { mutableStateOf("") }
+    var showErrorDialog by remember { mutableStateOf(false) }
+    var passwordVisible by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+
+    var fullNameError by remember { mutableStateOf(false) }
+    var emailError by remember { mutableStateOf(false) }
+    var phoneError by remember { mutableStateOf(false) }
+    var passwordError by remember { mutableStateOf(false) }
 
     Box(
         modifier = Modifier
@@ -97,17 +113,22 @@ fun RegisterScreen(
 
             OutlinedTextField(
                 value = fullName,
-                onValueChange = { fullName = it },
+                onValueChange = { 
+                    fullName = it
+                    fullNameError = false
+                },
                 leadingIcon = {
                     Icon(Icons.Filled.Person, contentDescription = null, tint = CommunityColors.TextMuted)
                 },
                 placeholder = { Text("Full Name") },
                 singleLine = true,
+                isError = fullNameError,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedContainerColor = Color.White,
                     unfocusedContainerColor = Color.White,
-                    disabledContainerColor = Color.White
+                    disabledContainerColor = Color.White,
+                    errorContainerColor = Color.White
                 ),
                 shape = RoundedCornerShape(10.dp),
                 modifier = Modifier.fillMaxWidth()
@@ -117,17 +138,22 @@ fun RegisterScreen(
 
             OutlinedTextField(
                 value = email,
-                onValueChange = { email = it },
+                onValueChange = { 
+                    email = it
+                    emailError = false
+                },
                 leadingIcon = {
                     Icon(Icons.Filled.Email, contentDescription = null, tint = CommunityColors.TextMuted)
                 },
                 placeholder = { Text("Email") },
                 singleLine = true,
+                isError = emailError,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedContainerColor = Color.White,
                     unfocusedContainerColor = Color.White,
-                    disabledContainerColor = Color.White
+                    disabledContainerColor = Color.White,
+                    errorContainerColor = Color.White
                 ),
                 shape = RoundedCornerShape(10.dp),
                 modifier = Modifier.fillMaxWidth()
@@ -137,18 +163,29 @@ fun RegisterScreen(
 
             OutlinedTextField(
                 value = password,
-                onValueChange = { password = it },
+                onValueChange = { 
+                    password = it
+                    passwordError = false
+                },
                 leadingIcon = {
                     Icon(Icons.Filled.Lock, contentDescription = null, tint = CommunityColors.TextMuted)
                 },
+                trailingIcon = {
+                    val icon = if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
+                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                        Icon(imageVector = icon, contentDescription = if (passwordVisible) "Hide password" else "Show password", tint = CommunityColors.TextMuted)
+                    }
+                },
                 placeholder = { Text("Password") },
-                visualTransformation = PasswordVisualTransformation(),
+                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                 singleLine = true,
+                isError = passwordError,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedContainerColor = Color.White,
                     unfocusedContainerColor = Color.White,
-                    disabledContainerColor = Color.White
+                    disabledContainerColor = Color.White,
+                    errorContainerColor = Color.White
                 ),
                 shape = RoundedCornerShape(10.dp),
                 modifier = Modifier.fillMaxWidth()
@@ -158,17 +195,24 @@ fun RegisterScreen(
 
             OutlinedTextField(
                 value = phone,
-                onValueChange = { phone = it.filter { char -> char.isDigit() } },
+                onValueChange = { 
+                    if (it.length <= 11) {
+                        phone = it.filter { char -> char.isDigit() }
+                        phoneError = false
+                    }
+                },
                 leadingIcon = {
                     Icon(Icons.Filled.Phone, contentDescription = null, tint = CommunityColors.TextMuted)
                 },
-                placeholder = { Text("Phone Number") },
+                placeholder = { Text("Phone Number (e.g. 01XXXXXXXX)") },
                 singleLine = true,
+                isError = phoneError,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedContainerColor = Color.White,
                     unfocusedContainerColor = Color.White,
-                    disabledContainerColor = Color.White
+                    disabledContainerColor = Color.White,
+                    errorContainerColor = Color.White
                 ),
                 shape = RoundedCornerShape(10.dp),
                 modifier = Modifier.fillMaxWidth()
@@ -178,28 +222,54 @@ fun RegisterScreen(
 
             Button(
                 onClick = {
-                    when {
-                        !Validation.isNameValid(fullName) -> message = "Please enter your name."
-                        !Validation.isEmailValid(email) -> message = "Invalid email."
-                        !Validation.isPhoneValid(phone) -> message = "Invalid phone number."
-                        !Validation.isPasswordValid(password) -> message = "Password must be at least 6 characters."
-                        else -> {
-                            val success = authViewModel.register(
-                                fullName = fullName,
-                                email = email,
-                                phone = phone,
-                                password = password
-                            )
+                    // Reset errors
+                    fullNameError = false
+                    emailError = false
+                    phoneError = false
+                    passwordError = false
 
-                            if (success) {
-                                navController.navigate("login") {
-                                    popUpTo("login") {
-                                        inclusive = false
+                    when {
+                        !Validation.isNameValid(fullName) -> {
+                            message = "Please enter your name."
+                            fullNameError = true
+                            showErrorDialog = true
+                        }
+                        !Validation.isEmailValid(email) -> {
+                            message = "Invalid email format (e.g. name@domain.com)."
+                            emailError = true
+                            showErrorDialog = true
+                        }
+                        !Validation.isPhoneValid(phone) -> {
+                            message = "Invalid phone format. 011 starts must be 11 digits, others 10 digits."
+                            phoneError = true
+                            showErrorDialog = true
+                        }
+                        !Validation.isPasswordValid(password) -> {
+                            message = "Password must be at least 8 characters, include uppercase, number, and special character (@#$%)."
+                            passwordError = true
+                            showErrorDialog = true
+                        }
+                        else -> {
+                            scope.launch {
+                                val success = authViewModel.register(
+                                    fullName = fullName,
+                                    email = email,
+                                    phone = phone,
+                                    password = password
+                                )
+
+                                if (success) {
+                                    navController.navigate("login") {
+                                        popUpTo("login") {
+                                            inclusive = false
+                                        }
+                                        launchSingleTop = true
                                     }
-                                    launchSingleTop = true
+                                } else {
+                                    message = "Registration failed. Email might already exist."
+                                    emailError = true
+                                    showErrorDialog = true
                                 }
-                            } else {
-                                message = "Email already exists."
                             }
                         }
                     }
@@ -229,7 +299,20 @@ fun RegisterScreen(
                 )
             }
 
-            if (message.isNotEmpty()) {
+            if (showErrorDialog) {
+                AlertDialog(
+                    onDismissRequest = { showErrorDialog = false },
+                    title = { Text("Registration Error") },
+                    text = { Text(message) },
+                    confirmButton = {
+                        TextButton(onClick = { showErrorDialog = false }) {
+                            Text("OK")
+                        }
+                    }
+                )
+            }
+
+            if (message.isNotEmpty() && !showErrorDialog) {
                 Spacer(Modifier.height(14.dp))
                 Text(
                     text = message,

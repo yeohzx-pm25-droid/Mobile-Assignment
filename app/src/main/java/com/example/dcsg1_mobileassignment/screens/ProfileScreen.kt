@@ -37,6 +37,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.example.dcsg1_mobileassignment.communityhelp.data.CommunityStore
 import com.example.dcsg1_mobileassignment.communityhelp.model.BottomTab
 import com.example.dcsg1_mobileassignment.communityhelp.screens.CommunityColors
 import com.example.dcsg1_mobileassignment.communityhelp.screens.CommunityScaffold
@@ -48,6 +49,11 @@ fun ProfileScreen(
     authViewModel: AuthViewModel
 ) {
     val user = authViewModel.currentUser
+
+    val jobApplicationsCount = CommunityStore.appliedJobIds.size
+    val postedJobsCount = CommunityStore.jobs.count { it.mine }
+    val donatedItemsCount = CommunityStore.donations.count { it.mine }
+    val reservedItemsCount = CommunityStore.reservedDonationIds.size
 
     if (user == null) {
         Box(
@@ -155,13 +161,21 @@ fun ProfileScreen(
                         border = androidx.compose.foundation.BorderStroke(1.dp, CommunityColors.FieldBorder)
                     ) {
                         Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                            ActivityRow("My Job Applications", "4")
+                            ActivityRow("My Job Applications", jobApplicationsCount.toString()) {
+                                navController.navigate("activityList/appliedJobs")
+                            }
                             HorizontalDivider(color = CommunityColors.FieldBorder)
-                            ActivityRow("My Posted Jobs", "2")
+                            ActivityRow("My Posted Jobs", postedJobsCount.toString()) {
+                                navController.navigate("activityList/myJobs")
+                            }
                             HorizontalDivider(color = CommunityColors.FieldBorder)
-                            ActivityRow("My Donated Items", "3")
+                            ActivityRow("My Donated Items", donatedItemsCount.toString()) {
+                                navController.navigate("activityList/myDonations")
+                            }
                             HorizontalDivider(color = CommunityColors.FieldBorder)
-                            ActivityRow("My Reserved Items", "1")
+                            ActivityRow("My Reserved Items", reservedItemsCount.toString()) {
+                                navController.navigate("activityList/reservedDonations")
+                            }
                         }
                     }
 
@@ -194,12 +208,14 @@ fun ProfileScreen(
 @Composable
 private fun ActivityRow(
     label: String,
-    value: String
+    value: String,
+    onClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(54.dp),
+            .height(54.dp)
+            .clickable { onClick() },
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(Icons.Filled.Work, contentDescription = null, tint = CommunityColors.Green, modifier = Modifier.size(21.dp))

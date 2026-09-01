@@ -17,6 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -24,6 +25,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -63,6 +65,10 @@ fun EditProfileScreen(
     var fullName by remember { mutableStateOf(user.fullName) }
     var phone by remember { mutableStateOf(user.phone) }
     var message by remember { mutableStateOf("") }
+    var showErrorDialog by remember { mutableStateOf(false) }
+
+    var fullNameError by remember { mutableStateOf(false) }
+    var phoneError by remember { mutableStateOf(false) }
 
     Box(
         modifier = Modifier
@@ -107,17 +113,20 @@ fun EditProfileScreen(
                 onValueChange = {
                     fullName = it
                     message = ""
+                    fullNameError = false
                 },
                 leadingIcon = {
                     Icon(Icons.Filled.Person, contentDescription = null, tint = CommunityColors.TextMuted)
                 },
                 placeholder = { Text("Full Name") },
                 singleLine = true,
+                isError = fullNameError,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedContainerColor = Color.White,
                     unfocusedContainerColor = Color.White,
-                    disabledContainerColor = Color.White
+                    disabledContainerColor = Color.White,
+                    errorContainerColor = Color.White
                 ),
                 shape = RoundedCornerShape(10.dp),
                 modifier = Modifier.fillMaxWidth()
@@ -128,19 +137,24 @@ fun EditProfileScreen(
             OutlinedTextField(
                 value = phone,
                 onValueChange = {
-                    phone = it.filter { char -> char.isDigit() }
+                    if (it.length <= 11) {
+                        phone = it.filter { char -> char.isDigit() }
+                        phoneError = false
+                    }
                     message = ""
                 },
                 leadingIcon = {
                     Icon(Icons.Filled.Phone, contentDescription = null, tint = CommunityColors.TextMuted)
                 },
-                placeholder = { Text("Phone Number") },
+                placeholder = { Text("Phone Number (e.g. 01XXXXXXXX)") },
                 singleLine = true,
+                isError = phoneError,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedContainerColor = Color.White,
                     unfocusedContainerColor = Color.White,
-                    disabledContainerColor = Color.White
+                    disabledContainerColor = Color.White,
+                    errorContainerColor = Color.White
                 ),
                 shape = RoundedCornerShape(10.dp),
                 modifier = Modifier.fillMaxWidth()
@@ -150,9 +164,20 @@ fun EditProfileScreen(
 
             Button(
                 onClick = {
+                    fullNameError = false
+                    phoneError = false
+
                     when {
-                        !Validation.isNameValid(fullName) -> message = "Name cannot be empty."
-                        !Validation.isPhoneValid(phone) -> message = "Invalid phone number."
+                        !Validation.isNameValid(fullName) -> {
+                            message = "Name cannot be empty."
+                            fullNameError = true
+                            showErrorDialog = true
+                        }
+                        !Validation.isPhoneValid(phone) -> {
+                            message = "Invalid phone format. 011 starts must be 11 digits, others 10 digits."
+                            phoneError = true
+                            showErrorDialog = true
+                        }
                         else -> {
                             authViewModel.updateProfile(fullName, phone)
                             message = "Profile updated successfully."
@@ -168,7 +193,20 @@ fun EditProfileScreen(
                 Text("Save Changes", color = Color.White, fontWeight = FontWeight.Bold)
             }
 
-            if (message.isNotEmpty()) {
+            if (showErrorDialog) {
+                AlertDialog(
+                    onDismissRequest = { showErrorDialog = false },
+                    title = { Text("Update Error") },
+                    text = { Text(message) },
+                    confirmButton = {
+                        TextButton(onClick = { showErrorDialog = false }) {
+                            Text("OK")
+                        }
+                    }
+                )
+            }
+
+            if (message.isNotEmpty() && !showErrorDialog) {
                 Spacer(Modifier.height(18.dp))
                 Text(
                     text = message,
