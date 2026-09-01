@@ -13,13 +13,18 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -35,6 +40,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
@@ -50,6 +56,8 @@ fun ForgotPasswordScreen(
     var email by remember { mutableStateOf("") }
     var newPassword by remember { mutableStateOf("") }
     var message by remember { mutableStateOf("") }
+    var passwordVisible by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
 
     Box(
         modifier = Modifier
@@ -121,8 +129,14 @@ fun ForgotPasswordScreen(
                 leadingIcon = {
                     Icon(Icons.Filled.Lock, contentDescription = null, tint = CommunityColors.TextMuted)
                 },
+                trailingIcon = {
+                    val icon = if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
+                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                        Icon(imageVector = icon, contentDescription = if (passwordVisible) "Hide password" else "Show password", tint = CommunityColors.TextMuted)
+                    }
+                },
                 placeholder = { Text("New Password") },
-                visualTransformation = PasswordVisualTransformation(),
+                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                 colors = OutlinedTextFieldDefaults.colors(
@@ -138,15 +152,17 @@ fun ForgotPasswordScreen(
 
             Button(
                 onClick = {
-                    when {
-                        !Validation.isEmailValid(email) -> message = "Invalid email."
-                        !Validation.isPasswordValid(newPassword) -> message = "Password must be at least 6 characters."
-                        else -> {
-                            val success = authViewModel.resetPassword(email, newPassword)
-                            message = if (success) {
-                                "Password updated successfully."
-                            } else {
-                                "Email not found."
+                    scope.launch {
+                        when {
+                            !Validation.isEmailValid(email) -> message = "Invalid email format (e.g. name@domain.com)."
+                            !Validation.isPasswordValid(newPassword) -> message = "Password must be at least 8 characters, include uppercase, number, and special character (@#$%)."
+                            else -> {
+                                val success = authViewModel.resetPassword(email, newPassword)
+                                message = if (success) {
+                                    "Password reset link sent to your email."
+                                } else {
+                                    "Failed to send reset link."
+                                }
                             }
                         }
                     }

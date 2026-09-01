@@ -12,6 +12,8 @@ import com.example.dcsg1_mobileassignment.communityhelp.model.PostType
 import com.example.dcsg1_mobileassignment.communityhelp.screens.BlankCommunityScreen
 import com.example.dcsg1_mobileassignment.communityhelp.screens.CommunityHomeScreen
 import com.example.dcsg1_mobileassignment.screens.CreatePostScreen
+import com.example.dcsg1_mobileassignment.screens.DonationDetailScreen
+import com.example.dcsg1_mobileassignment.screens.DonationListScreen
 import com.example.dcsg1_mobileassignment.screens.EditProfileScreen
 import com.example.dcsg1_mobileassignment.screens.ForgotPasswordScreen
 import com.example.dcsg1_mobileassignment.screens.JobDetailScreen
@@ -19,6 +21,7 @@ import com.example.dcsg1_mobileassignment.screens.JobListScreen
 import com.example.dcsg1_mobileassignment.screens.LoginScreen
 import com.example.dcsg1_mobileassignment.screens.ProfileScreen
 import com.example.dcsg1_mobileassignment.screens.RegisterScreen
+import com.example.dcsg1_mobileassignment.screens.UserActivityListScreen
 import com.example.dcsg1_mobileassignment.viewmodel.AuthViewModel
 
 @Composable
@@ -66,7 +69,17 @@ fun AppNavigation() {
         }
 
         composable("donation") {
-            BlankCommunityScreen(navController, BottomTab.Donation)
+            DonationListScreen(navController)
+        }
+
+        composable(
+            route = "donationDetail/{donationId}",
+            arguments = listOf(navArgument("donationId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            DonationDetailScreen(
+                navController = navController,
+                donationId = backStackEntry.arguments?.getString("donationId").orEmpty()
+            )
         }
 
         composable("userProfile") {
@@ -75,6 +88,16 @@ fun AppNavigation() {
 
         composable("editProfile") {
             EditProfileScreen(navController, authViewModel)
+        }
+
+        composable(
+            route = "activityList/{type}",
+            arguments = listOf(navArgument("type") { type = NavType.StringType })
+        ) { backStackEntry ->
+            UserActivityListScreen(
+                navController = navController,
+                activityType = backStackEntry.arguments?.getString("type").orEmpty()
+            )
         }
 
         composable("createJob") {

@@ -95,7 +95,10 @@ fun CommunityHomeScreen(
             }
 
             items(CommunityStore.jobs.take(2).size) { index ->
-                JobCard(CommunityStore.jobs[index])
+                val job = CommunityStore.jobs[index]
+                JobCard(job) {
+                    navController.navigate("jobDetail/${job.id}")
+                }
             }
         }
     }
@@ -145,11 +148,12 @@ private fun ActionTile(
 }
 
 @Composable
-private fun JobCard(job: JobPost) {
+fun JobCard(job: JobPost, onClick: () -> Unit = {}) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(bottom = 12.dp),
+            .padding(bottom = 12.dp)
+            .clickable { onClick() },
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
