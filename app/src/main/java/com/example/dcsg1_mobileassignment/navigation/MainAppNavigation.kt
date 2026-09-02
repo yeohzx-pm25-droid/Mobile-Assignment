@@ -1,7 +1,12 @@
 package com.example.dcsg1_mobileassignment.navigation
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -22,6 +27,7 @@ import com.example.dcsg1_mobileassignment.screens.JobDetailScreen
 import com.example.dcsg1_mobileassignment.screens.JobFilterScreen
 import com.example.dcsg1_mobileassignment.screens.JobListScreen
 import com.example.dcsg1_mobileassignment.screens.LoginScreen
+import com.example.dcsg1_mobileassignment.screens.NewPasswordScreen
 import com.example.dcsg1_mobileassignment.screens.ProfileScreen
 import com.example.dcsg1_mobileassignment.screens.RegisterScreen
 import com.example.dcsg1_mobileassignment.screens.UserActivityListScreen
@@ -41,9 +47,33 @@ fun AppNavigation() {
         }
     }
 
+    // Once the user taps the "reset password" email link, AuthViewModel
+    // sets isPasswordRecovery = true. Jump straight to the "set new
+    // password" screen regardless of where navigation currently is.
+    LaunchedEffect(authViewModel.isPasswordRecovery) {
+        if (authViewModel.isPasswordRecovery) {
+            navController.navigate("newPassword") {
+                popUpTo(0)
+            }
+        }
+    }
+
+    // While Supabase checks for a saved session, show a loading state
+    // instead of the login screen so a previously logged-in user doesn't
+    // briefly see "login" before landing on "home".
+    if (authViewModel.isInitializing) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator()
+        }
+        return
+    }
+
     NavHost(
         navController = navController,
-        startDestination = "login"
+        startDestination = if (authViewModel.currentUser != null) "home" else "login"
     ) {
         composable("login") {
             LoginScreen(navController, authViewModel)
@@ -55,6 +85,10 @@ fun AppNavigation() {
 
         composable("forgotPassword") {
             ForgotPasswordScreen(navController, authViewModel)
+        }
+
+        composable("newPassword") {
+            NewPasswordScreen(navController, authViewModel)
         }
 
         // LoginScreen still navigates to "profile"; this route now opens your Home.

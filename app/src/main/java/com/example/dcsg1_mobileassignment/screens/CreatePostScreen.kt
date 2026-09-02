@@ -25,13 +25,16 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.FileUpload
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -519,7 +522,12 @@ private fun TopBar(title: String, onBack: () -> Unit) {
                 .clickable { onBack() },
             contentAlignment = Alignment.Center
         ) {
-            Text("<", color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Bold)
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = "Back",
+                tint = Color.White,
+                modifier = Modifier.size(26.dp)
+            )
         }
         Text(title, color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.Bold)
     }
@@ -605,7 +613,11 @@ private fun CategoryDropdown(label: String, selected: String, items: List<String
             ) {
                 Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Text(selected, color = CommunityColors.TextPrimary, modifier = Modifier.weight(1f))
-                    Text("v", color = CommunityColors.TextMuted, fontWeight = FontWeight.Bold)
+                    Icon(
+                        imageVector = Icons.Filled.KeyboardArrowDown,
+                        contentDescription = null,
+                        tint = CommunityColors.TextMuted
+                    )
                 }
             }
 
@@ -617,20 +629,20 @@ private fun CategoryDropdown(label: String, selected: String, items: List<String
                     .heightIn(max = 220.dp)
             ) {
 
-                    items.forEach { item ->
-                        CategoryListItem(
-                            label = item,
-                            selected = item == selected
-                        ) {
-                            onSelected(item)
-                            expanded = false
-                        }
-                        Spacer(Modifier.height(8.dp))
+                items.forEach { item ->
+                    CategoryListItem(
+                        label = item,
+                        selected = item == selected
+                    ) {
+                        onSelected(item)
+                        expanded = false
                     }
+                    Spacer(Modifier.height(8.dp))
                 }
             }
         }
     }
+}
 
 
 @Composable

@@ -7,18 +7,38 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.dcsg1_mobileassignment.data.User
 import com.example.dcsg1_mobileassignment.supabase
+import io.github.jan.supabase.auth.SignOutScope
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.Facebook
 import io.github.jan.supabase.auth.providers.Google
 import io.github.jan.supabase.auth.providers.builtin.Email
 import io.github.jan.supabase.auth.status.SessionStatus
+import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
+// Result of requesting a password reset email, so the UI can tell an
+// unregistered email apart from a generic failure.
+sealed class PasswordResetResult {
+    object Success : PasswordResetResult()
+    object EmailNotFound : PasswordResetResult()
+    object Error : PasswordResetResult()
+}
+
 class AuthViewModel : ViewModel() {
 
     var currentUser by mutableStateOf<User?>(null)
+        private set
+
+    var isPasswordRecovery by mutableStateOf(false)
+        private set
+
+    // True until the initial session check (restoring any saved login) has
+    // finished. The UI should show a loading state instead of the login
+    // screen while this is true, to avoid flashing "login" before we know
+    // the user is already signed in.
+    var isInitializing by mutableStateOf(true)
         private set
 
     // ==========================================
@@ -33,6 +53,17 @@ class AuthViewModel : ViewModel() {
                     is SessionStatus.Authenticated -> {
                         println("SUPABASE USER AUTHENTICATED")
                         val supabaseUser = supabase.auth.currentUserOrNull()
+
+                        if (PasswordRecoveryState.pending) {
+                            // Came from the "reset password" email link -
+                            // don't log the user in, send them to set a
+                            // new password instead.
+                            PasswordRecoveryState.pending = false
+                            isPasswordRecovery = true
+                            isInitializing = false
+                            return@collect
+                        }
+
                         if (supabaseUser != null) {
                             currentUser = User(
                                 id = supabaseUser.id,
@@ -43,9 +74,11 @@ class AuthViewModel : ViewModel() {
                                 password = ""
                             )
                         }
+                        isInitializing = false
                     }
                     is SessionStatus.NotAuthenticated -> {
                         currentUser = null
+                        isInitializing = false
                     }
                     else -> {}
                 }
@@ -66,7 +99,7 @@ class AuthViewModel : ViewModel() {
             null
         } catch (e: Exception) {
             e.printStackTrace()
-            e.message ?: "Invalid email or password."
+            e.message ?: "Login failed. Please check your email and password."
         }
     }
 
@@ -89,7 +122,7 @@ class AuthViewModel : ViewModel() {
     fun logout() {
         viewModelScope.launch {
             try {
-                supabase.auth.signOut()
+                supabase.auth.signOut(SignOutScope.LOCAL)
                 currentUser = null
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -100,8 +133,6 @@ class AuthViewModel : ViewModel() {
     // ==========================================
     // REGISTER
     // ==========================================
-    // Returns null on success, or the real error message on failure so the UI
-    // can show what actually went wrong instead of guessing.
     suspend fun register(fullName: String, email: String, phone: String, password: String): String? {
         return try {
             supabase.auth.signUpWith(Email) {
@@ -121,17 +152,65 @@ class AuthViewModel : ViewModel() {
     }
 
     // ==========================================
-    // RESET PASSWORD
+    // FORGOT PASSWORD - STEP 1: send the recovery email
     // ==========================================
-    // Returns null on success, or the real error message on failure.
-    suspend fun resetPassword(email: String, newPassword: String): String? {
+    // Supabase never accepts a new password directly here - it can only
+    // email a one-time recovery link. The actual password change happens
+    // in updateNewPassword(), once the user has tapped that link and we
+    // have a valid recovery session.
+    suspend fun sendPasswordResetEmail(email: String): PasswordResetResult {
         return try {
-            supabase.auth.resetPasswordForEmail(email)
-            null
+            if (!emailIsRegistered(email)) {
+                return PasswordResetResult.EmailNotFound
+            }
+
+            // redirectUrl must match the scheme/host declared in the
+            // manifest's intent-filter, otherwise Supabase falls back to
+            // the dashboard's Site URL and the link opens a blank page.
+            supabase.auth.resetPasswordForEmail(
+                email = email,
+                redirectUrl = "dcsg1app://login-callback"
+            )
+            PasswordResetResult.Success
         } catch (e: Exception) {
             e.printStackTrace()
-            println("RESET PASSWORD ERROR: ${e.message}")
-            e.message ?: "Failed to send reset link."
+            PasswordResetResult.Error
+        }
+    }
+
+    // Checks the "email_exists" Postgres function (see project SQL setup)
+    // so we can tell the user their email isn't registered instead of
+    // silently sending nothing. If the check itself fails (e.g. network),
+    // we fail open and let resetPasswordForEmail attempt the send.
+    private suspend fun emailIsRegistered(email: String): Boolean {
+        return try {
+            supabase.postgrest.rpc(
+                "email_exists",
+                buildJsonObject { put("check_email", email) }
+            ).decodeAs<Boolean>()
+        } catch (e: Exception) {
+            e.printStackTrace()
+            true
+        }
+    }
+
+    // ==========================================
+    // FORGOT PASSWORD - STEP 2: set the new password
+    // ==========================================
+    // Called from the "New Password" screen after the user arrived via the
+    // recovery email link (isPasswordRecovery == true).
+    suspend fun updateNewPassword(newPassword: String): Boolean {
+        return try {
+            supabase.auth.updateUser {
+                password = newPassword
+            }
+            isPasswordRecovery = false
+            supabase.auth.signOut(SignOutScope.LOCAL)
+            currentUser = null
+            true
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
         }
     }
 
