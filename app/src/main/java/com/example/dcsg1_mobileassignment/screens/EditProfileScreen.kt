@@ -30,6 +30,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,6 +43,7 @@ import androidx.navigation.NavController
 import com.example.dcsg1_mobileassignment.communityhelp.screens.CommunityColors
 import com.example.dcsg1_mobileassignment.utils.Validation
 import com.example.dcsg1_mobileassignment.viewmodel.AuthViewModel
+import kotlinx.coroutines.launch
 
 @Composable
 fun EditProfileScreen(
@@ -69,6 +71,7 @@ fun EditProfileScreen(
 
     var fullNameError by remember { mutableStateOf(false) }
     var phoneError by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
 
     Box(
         modifier = Modifier
@@ -179,8 +182,15 @@ fun EditProfileScreen(
                             showErrorDialog = true
                         }
                         else -> {
-                            authViewModel.updateProfile(fullName, phone)
-                            message = "Profile updated successfully."
+                            scope.launch {
+                                val error = authViewModel.updateProfile(fullName, phone)
+                                if (error == null) {
+                                    navController.popBackStack()
+                                } else {
+                                    message = error
+                                    showErrorDialog = true
+                                }
+                            }
                         }
                     }
                 },

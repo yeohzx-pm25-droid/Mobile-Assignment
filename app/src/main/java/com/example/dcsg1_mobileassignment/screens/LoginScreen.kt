@@ -66,17 +66,6 @@ fun LoginScreen(
 
     val currentUser = authViewModel.currentUser
 
-    LaunchedEffect(currentUser) {
-        if (currentUser != null) {
-            navController.navigate("profile") {
-                popUpTo("login") {
-                    inclusive = true
-                }
-                launchSingleTop = true
-            }
-        }
-    }
-
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -167,9 +156,16 @@ fun LoginScreen(
         Button(
             onClick = {
                 scope.launch {
-                    val success = authViewModel.login(email, password)
-                    if (!success) {
-                        message = "Invalid email or password."
+                    val error = authViewModel.login(email, password)
+                    if (error == null) {
+                        navController.navigate("profile") {
+                            popUpTo("login") {
+                                inclusive = true
+                            }
+                            launchSingleTop = true
+                        }
+                    } else {
+                        message = error
                     }
                 }
             },

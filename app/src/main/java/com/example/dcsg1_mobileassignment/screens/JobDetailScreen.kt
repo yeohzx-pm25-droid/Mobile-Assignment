@@ -4,6 +4,7 @@ import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -125,48 +126,72 @@ fun JobDetailScreen(
             Spacer(Modifier.weight(1f))
 
             if (job.mine) {
-                Button(
-                    onClick = {
-                        CommunityStore.deleteJob(job.id)
-                        Toast.makeText(context, "Job deleted successfully", Toast.LENGTH_SHORT).show()
-                        navController.popBackStack()
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(58.dp),
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE53935))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text(
-                        text = "Delete Post",
-                        color = Color.White,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Button(
+                        onClick = {
+                            navController.navigate("editPost/Job/${job.id}")
+                        },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(58.dp),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = CommunityColors.Green)
+                    ) {
+                        Text(
+                            text = "Edit Post",
+                            color = Color.White,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    Button(
+                        onClick = {
+                            CommunityStore.deleteJob(job.id)
+                            Toast.makeText(context, "Job deleted successfully", Toast.LENGTH_SHORT).show()
+                            navController.popBackStack()
+                        },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(58.dp),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE53935))
+                    ) {
+                        Text(
+                            text = "Delete Post",
+                            color = Color.White,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             } else {
                 val alreadyApplied = CommunityStore.appliedJobIds.contains(job.id)
 
                 Button(
                     onClick = {
-                        if (!alreadyApplied) {
+                        if (alreadyApplied) {
+                            CommunityStore.unapplyFromJob(job.id)
+                            Toast.makeText(context, "Application withdrawn", Toast.LENGTH_SHORT).show()
+                        } else {
                             CommunityStore.applyToJob(job.id)
                             Toast.makeText(context, "Applied successfully", Toast.LENGTH_SHORT).show()
                         }
                     },
-                    enabled = !alreadyApplied,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(58.dp),
                     shape = RoundedCornerShape(10.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = CommunityColors.Green,
-                        disabledContainerColor = CommunityColors.FieldBorder
+                        containerColor = if (alreadyApplied) Color(0xFFE53935) else CommunityColors.Green
                     )
                 ) {
                     Text(
-                        text = if (alreadyApplied) "Applied" else "Apply Now",
-                        color = if (alreadyApplied) CommunityColors.TextMuted else Color.White,
+                        text = if (alreadyApplied) "Unapply" else "Apply Now",
+                        color = Color.White,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold
                     )

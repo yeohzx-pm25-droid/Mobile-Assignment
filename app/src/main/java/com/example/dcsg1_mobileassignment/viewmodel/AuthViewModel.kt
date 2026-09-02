@@ -57,16 +57,16 @@ class AuthViewModel : ViewModel() {
     // NORMAL EMAIL LOGIN
     // ==========================================
 
-    suspend fun login(email: String, password: String): Boolean {
+    suspend fun login(email: String, password: String): String? {
         return try {
             supabase.auth.signInWith(Email) {
                 this.email = email
                 this.password = password
             }
-            true
+            null
         } catch (e: Exception) {
             e.printStackTrace()
-            false
+            e.message ?: "Invalid email or password."
         }
     }
 
@@ -138,18 +138,18 @@ class AuthViewModel : ViewModel() {
     // ==========================================
     // UPDATE PROFILE
     // ==========================================
-    fun updateProfile(fullName: String, phone: String) {
-        viewModelScope.launch {
-            try {
-                supabase.auth.updateUser {
-                    data = buildJsonObject {
-                        put("full_name", fullName)
-                        put("phone", phone)
-                    }
+    suspend fun updateProfile(fullName: String, phone: String): String? {
+        return try {
+            supabase.auth.updateUser {
+                data = buildJsonObject {
+                    put("full_name", fullName)
+                    put("phone", phone)
                 }
-            } catch (e: Exception) {
-                e.printStackTrace()
             }
+            null
+        } catch (e: Exception) {
+            e.printStackTrace()
+            e.message ?: "Failed to update profile."
         }
     }
 }

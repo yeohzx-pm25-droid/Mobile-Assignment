@@ -112,5 +112,21 @@ fun AppNavigation() {
         composable("createDonation") {
             CreatePostScreen(navController, PostType.Donation)
         }
+
+        composable(
+            route = "editPost/{type}/{id}",
+            arguments = listOf(
+                navArgument("type") { type = NavType.StringType },
+                navArgument("id") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val type = backStackEntry.arguments?.getString("type") ?: "Job"
+            val id = backStackEntry.arguments?.getString("id")
+            CreatePostScreen(
+                navController = navController,
+                initialType = if (type == "Job") PostType.Job else PostType.Donation,
+                postId = id
+            )
+        }
     }
 }

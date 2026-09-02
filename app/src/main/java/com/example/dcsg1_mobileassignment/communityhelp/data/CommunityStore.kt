@@ -79,10 +79,18 @@ object CommunityStore {
         }
     }
 
+    fun unapplyFromJob(jobId: String) {
+        appliedJobIds.remove(jobId)
+    }
+
     fun reserveDonation(donationId: String) {
         if (!reservedDonationIds.contains(donationId)) {
             reservedDonationIds.add(donationId)
         }
+    }
+
+    fun unreserveDonation(donationId: String) {
+        reservedDonationIds.remove(donationId)
     }
 
     fun deleteJob(jobId: String) {
@@ -93,5 +101,19 @@ object CommunityStore {
     fun deleteDonation(donationId: String) {
         donations.removeAll { it.id == donationId }
         reservedDonationIds.remove(donationId)
+    }
+
+    fun updateJob(updatedJob: JobPost) {
+        val index = jobs.indexOfFirst { it.id == updatedJob.id }
+        if (index != -1) {
+            jobs[index] = updatedJob
+        }
+    }
+
+    fun updateDonation(updatedDonation: DonationPost) {
+        val index = donations.indexOfFirst { it.id == updatedDonation.id }
+        if (index != -1) {
+            donations[index] = updatedDonation
+        }
     }
 }

@@ -61,27 +61,44 @@ import com.example.dcsg1_mobileassignment.communityhelp.validation.PostValidator
 @Composable
 fun CreatePostScreen(
     navController: NavController,
-    initialType: PostType
+    initialType: PostType,
+    postId: String? = null
 ) {
     val context = LocalContext.current
     var postType by remember { mutableStateOf(initialType) }
 
-    var jobTitle by remember { mutableStateOf("") }
-    var jobCategory by remember { mutableStateOf(CommunityData.jobCategories.first()) }
-    var jobLocation by remember { mutableStateOf("") }
-    var jobPayment by remember { mutableStateOf("") }
-    var jobPaymentUnit by remember { mutableStateOf("Day") }
-    var jobDescription by remember { mutableStateOf("") }
+    // Load existing data if editing
+    val existingJob = if (postId != null && postType == PostType.Job) {
+        CommunityStore.jobs.firstOrNull { it.id == postId }
+    } else null
 
-    var donationName by remember { mutableStateOf("") }
-    var donationCategory by remember { mutableStateOf(CommunityData.donationCategories.first()) }
-    var donationLocation by remember { mutableStateOf("") }
+    val existingDonation = if (postId != null && postType == PostType.Donation) {
+        CommunityStore.donations.firstOrNull { it.id == postId }
+    } else null
+
+    var jobTitle by remember { mutableStateOf(existingJob?.title ?: "") }
+    var jobCategory by remember { mutableStateOf(existingJob?.category ?: CommunityData.jobCategories.first()) }
+    var jobLocation by remember { mutableStateOf(existingJob?.location ?: "") }
+
+    // Parse payment
+    val initialPayment = existingJob?.payment?.split(" ")?.firstOrNull()?.removePrefix("RM") ?: ""
+    val initialUnit = existingJob?.payment?.split("/")?.lastOrNull()?.trim()?.lowercase()?.replaceFirstChar { it.uppercase() } ?: "Day"
+
+    var jobPayment by remember { mutableStateOf(if (existingJob?.payment == "Negotiable") "" else initialPayment) }
+    var jobPaymentUnit by remember { mutableStateOf(if (existingJob?.payment == "Negotiable") "Negotiable" else initialUnit) }
+    var jobDescription by remember { mutableStateOf(existingJob?.description ?: "") }
+
+    var donationName by remember { mutableStateOf(existingDonation?.title ?: "") }
+    var donationCategory by remember { mutableStateOf(existingDonation?.category ?: CommunityData.donationCategories.first()) }
+    var donationLocation by remember { mutableStateOf(existingDonation?.location ?: "") }
     var donationPhotoUri by remember { mutableStateOf<Uri?>(null) }
-    var donationDescription by remember { mutableStateOf("") }
+    var donationDescription by remember { mutableStateOf(existingDonation?.description ?: "") }
 
     var leaveDialog by remember { mutableStateOf(false) }
     var alertTitle by remember { mutableStateOf("") }
     var alertMessage by remember { mutableStateOf("") }
+
+    val isEditing = postId != null
 
     val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         donationPhotoUri = uri
@@ -117,12 +134,12 @@ fun CreatePostScreen(
             .background(CommunityColors.Surface)
     ) {
         TopBar(
-            title = if (postType == PostType.Job) "Create Post" else "Create Donation",
+            title = if (isEditing) "Edit Post" else if (postType == PostType.Job) "Create Post" else "Create Donation",
             onBack = {
-                if (hasInput) {
+                if (hasInput && !isEditing) {
                     leaveDialog = true
                 } else {
-                    goHome()
+                    navController.popBackStack()
                 }
             }
         )
@@ -133,8 +150,10 @@ fun CreatePostScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp, vertical = 18.dp)
         ) {
-            TypeSegment(postType) { postType = it }
-            Spacer(Modifier.height(18.dp))
+            if (!isEditing) {
+                TypeSegment(postType) { postType = it }
+                Spacer(Modifier.height(18.dp))
+            }
 
             if (postType == PostType.Job) {
                 LabeledField("Title") {
@@ -173,7 +192,7 @@ fun CreatePostScreen(
                     InputField(jobDescription, { jobDescription = it }, "Tell more about the job...", lines = 3)
                 }
                 Spacer(Modifier.height(54.dp))
-                PrimaryButton("Post Now") {
+                PrimaryButton(if (isEditing) "Save Changes" else "Post Now") {
                     if (jobTitle.isBlank() || jobLocation.isBlank() || jobDescription.isBlank()) {
                         showAlert("Incomplete Form", "Please complete the job title, location, and description.")
                         return@PrimaryButton
@@ -187,20 +206,25 @@ fun CreatePostScreen(
                         return@PrimaryButton
                     }
 
-                    CommunityStore.addJob(
-                        JobPost(
-                            id = System.currentTimeMillis().toString(),
-                            title = jobTitle.trim(),
-                            category = jobCategory,
-                            location = jobLocation.trim(),
-                            payment = PostValidator.buildPayment(jobPayment, jobPaymentUnit),
-                            description = jobDescription.trim(),
-                            posted = "Posted just now",
-                            mine = true
-                        )
+                    val job = JobPost(
+                        id = existingJob?.id ?: System.currentTimeMillis().toString(),
+                        title = jobTitle.trim(),
+                        category = jobCategory,
+                        location = jobLocation.trim(),
+                        payment = PostValidator.buildPayment(jobPayment, jobPaymentUnit),
+                        description = jobDescription.trim(),
+                        posted = existingJob?.posted ?: "Posted just now",
+                        mine = true
                     )
-                    Toast.makeText(context, "Job posted successfully", Toast.LENGTH_SHORT).show()
-                    navController.navigateSingleTop("jobs")
+
+                    if (isEditing) {
+                        CommunityStore.updateJob(job)
+                        Toast.makeText(context, "Job updated successfully", Toast.LENGTH_SHORT).show()
+                    } else {
+                        CommunityStore.addJob(job)
+                        Toast.makeText(context, "Job posted successfully", Toast.LENGTH_SHORT).show()
+                    }
+                    navController.popBackStack()
                 }
             } else {
                 LabeledField("Item Name") {
@@ -215,17 +239,19 @@ fun CreatePostScreen(
                 LabeledField("Description") {
                     InputField(donationDescription, { donationDescription = it }, "Tell more about the item...", lines = 4)
                 }
-                ImageUploadField(
-                    photoUri = donationPhotoUri,
-                    onChoosePhoto = { photoPicker.launch("image/*") }
-                )
+                if (!isEditing) {
+                    ImageUploadField(
+                        photoUri = donationPhotoUri,
+                        onChoosePhoto = { photoPicker.launch("image/*") }
+                    )
+                }
                 Spacer(Modifier.height(40.dp))
-                PrimaryButton("Post Donation") {
+                PrimaryButton(if (isEditing) "Save Changes" else "Post Donation") {
                     if (donationName.isBlank() || donationLocation.isBlank() || donationDescription.isBlank()) {
                         showAlert("Incomplete Form", "Please complete the item name, pickup location, and description.")
                         return@PrimaryButton
                     }
-                    if (donationPhotoUri == null) {
+                    if (!isEditing && donationPhotoUri == null) {
                         showAlert("Photo Required", "Please choose one item photo before posting the donation.")
                         return@PrimaryButton
                     }
@@ -234,20 +260,25 @@ fun CreatePostScreen(
                         return@PrimaryButton
                     }
 
-                    CommunityStore.addDonation(
-                        DonationPost(
-                            id = System.currentTimeMillis().toString(),
-                            title = donationName.trim(),
-                            category = donationCategory,
-                            location = donationLocation.trim(),
-                            description = donationDescription.trim(),
-                            posted = "Posted just now",
-                            tint = PostValidator.tintForCategory(donationCategory),
-                            mine = true
-                        )
+                    val donation = DonationPost(
+                        id = existingDonation?.id ?: System.currentTimeMillis().toString(),
+                        title = donationName.trim(),
+                        category = donationCategory,
+                        location = donationLocation.trim(),
+                        description = donationDescription.trim(),
+                        posted = existingDonation?.posted ?: "Posted just now",
+                        tint = PostValidator.tintForCategory(donationCategory),
+                        mine = true
                     )
-                    Toast.makeText(context, "Donation posted successfully", Toast.LENGTH_SHORT).show()
-                    navController.navigateSingleTop("donation")
+
+                    if (isEditing) {
+                        CommunityStore.updateDonation(donation)
+                        Toast.makeText(context, "Donation updated successfully", Toast.LENGTH_SHORT).show()
+                    } else {
+                        CommunityStore.addDonation(donation)
+                        Toast.makeText(context, "Donation posted successfully", Toast.LENGTH_SHORT).show()
+                    }
+                    navController.popBackStack()
                 }
             }
         }

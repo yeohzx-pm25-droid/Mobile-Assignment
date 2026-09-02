@@ -4,6 +4,7 @@ import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -133,43 +134,69 @@ fun DonationDetailScreen(
             Spacer(Modifier.weight(1f))
 
             if (donation.mine) {
-                Button(
-                    onClick = {
-                        CommunityStore.deleteDonation(donation.id)
-                        Toast.makeText(context, "Donation deleted", Toast.LENGTH_SHORT).show()
-                        navController.popBackStack()
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(58.dp),
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE53935))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text(
-                        text = "Delete Post",
-                        color = Color.White,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Button(
+                        onClick = {
+                            navController.navigate("editPost/Donation/${donation.id}")
+                        },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(58.dp),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = CommunityColors.Green)
+                    ) {
+                        Text(
+                            text = "Edit Post",
+                            color = Color.White,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    Button(
+                        onClick = {
+                            CommunityStore.deleteDonation(donation.id)
+                            Toast.makeText(context, "Donation deleted", Toast.LENGTH_SHORT).show()
+                            navController.popBackStack()
+                        },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(58.dp),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE53935))
+                    ) {
+                        Text(
+                            text = "Delete Post",
+                            color = Color.White,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             } else {
                 Button(
                     onClick = {
-                        CommunityStore.reserveDonation(donation.id)
-                        Toast.makeText(context, "Item reserved", Toast.LENGTH_SHORT).show()
+                        if (reserved) {
+                            CommunityStore.unreserveDonation(donation.id)
+                            Toast.makeText(context, "Reservation cancelled", Toast.LENGTH_SHORT).show()
+                        } else {
+                            CommunityStore.reserveDonation(donation.id)
+                            Toast.makeText(context, "Item reserved", Toast.LENGTH_SHORT).show()
+                        }
                     },
-                    enabled = !reserved,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(58.dp),
                     shape = RoundedCornerShape(10.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = CommunityColors.Green,
-                        disabledContainerColor = CommunityColors.TextMuted
+                        containerColor = if (reserved) Color(0xFFE53935) else CommunityColors.Green
                     )
                 ) {
                     Text(
-                        text = if (reserved) "Already Reserved" else "Reserve This Item",
+                        text = if (reserved) "Unreserve Item" else "Reserve This Item",
                         color = Color.White,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold
