@@ -9,5 +9,6 @@ data class DonationPost(
     val description: String,
     val posted: String,
     val tint: Long = 0xFFEFF5EC,
+    val imageRes: Int? = null,
     val mine: Boolean = false
 )

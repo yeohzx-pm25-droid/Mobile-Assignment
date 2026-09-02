@@ -1,5 +1,6 @@
 package com.example.dcsg1_mobileassignment.communityhelp.data
 
+import com.example.dcsg1_mobileassignment.R
 import com.example.dcsg1_mobileassignment.communityhelp.model.DonationPost
 import com.example.dcsg1_mobileassignment.communityhelp.model.JobPost
 
@@ -97,6 +98,7 @@ object CommunityData {
             location = "George Town, Penang",
             description = "Mixed basic food pack for a small family.",
             posted = "Posted 3h ago",
+            imageRes = R.drawable.foodpack,
             tint = 0xFFFFF3C4
         ),
         DonationPost(
@@ -106,7 +108,8 @@ object CommunityData {
             location = "Bayan Lepas, Penang",
             description = "Two unopened bottles, suitable for daily use.",
             posted = "Posted 5h ago",
-            tint = 0xFFE1F2F1
+            imageRes= R.drawable.bodywashandhairshampoo,
+            tint = 0xFFE1F2F1,
         )
     )
 }

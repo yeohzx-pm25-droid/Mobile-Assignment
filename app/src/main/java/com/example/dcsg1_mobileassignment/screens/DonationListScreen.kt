@@ -189,6 +189,7 @@ fun DonationItemCard(
             RemoteDonationImage(
                 imageUrl = CommunityPostStore.imageUrlForDonation(donation.id),
                 fallbackTint = donation.tint,
+                imageRes = donation.imageRes,
                 modifier = Modifier.size(56.dp),
                 cornerRadius = 10.dp
             )

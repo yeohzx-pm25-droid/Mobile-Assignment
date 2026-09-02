@@ -68,6 +68,7 @@ fun DonationDetailScreen(
             RemoteDonationImage(
                 imageUrl = CommunityPostStore.imageUrlForDonation(donation.id),
                 fallbackTint = donation.tint,
+                imageRes = donation.imageRes,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(180.dp),

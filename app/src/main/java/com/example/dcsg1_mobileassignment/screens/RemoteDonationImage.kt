@@ -15,21 +15,25 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.net.URL
 
+
 @Composable
 fun RemoteDonationImage(
     imageUrl: String?,
     fallbackTint: Long,
     modifier: Modifier = Modifier,
+    imageRes: Int? = null,
     cornerRadius: Dp = 10.dp
 ) {
     val imageBitmap by produceState<ImageBitmap?>(initialValue = null, imageUrl) {
         value = null
+
         if (!imageUrl.isNullOrBlank()) {
             value = withContext(Dispatchers.IO) {
                 runCatching {
@@ -49,13 +53,27 @@ fun RemoteDonationImage(
             .background(Color(fallbackTint))
     ) {
         val bitmap = imageBitmap
-        if (bitmap != null) {
-            Image(
-                bitmap = bitmap,
-                contentDescription = "Donation image",
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
-            )
+
+        when {
+            bitmap != null -> {
+                // Display the image downloaded from the URL.
+                Image(
+                    bitmap = bitmap,
+                    contentDescription = "Donation image",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+
+            imageRes != null -> {
+                // Display the local drawable when no URL image is available.
+                Image(
+                    painter = painterResource(id = imageRes),
+                    contentDescription = "Donation image",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
         }
     }
 }
