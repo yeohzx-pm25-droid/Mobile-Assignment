@@ -1,9 +1,17 @@
 package com.example.dcsg1_mobileassignment.screens
 
+import android.Manifest
+import android.app.Activity
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.provider.MediaStore
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -39,6 +47,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -50,13 +59,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.dcsg1_mobileassignment.communityhelp.data.CommunityData
-import com.example.dcsg1_mobileassignment.communityhelp.data.CommunityStore
 import com.example.dcsg1_mobileassignment.communityhelp.model.DonationPost
 import com.example.dcsg1_mobileassignment.communityhelp.model.JobPost
 import com.example.dcsg1_mobileassignment.communityhelp.model.PostType
 import com.example.dcsg1_mobileassignment.communityhelp.screens.CommunityColors
 import com.example.dcsg1_mobileassignment.communityhelp.screens.navigateSingleTop
 import com.example.dcsg1_mobileassignment.communityhelp.validation.PostValidator
+import kotlinx.coroutines.launch
+import java.io.File
 
 @Composable
 fun CreatePostScreen(
@@ -65,15 +75,17 @@ fun CreatePostScreen(
     postId: String? = null
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     var postType by remember { mutableStateOf(initialType) }
+    var isPosting by remember { mutableStateOf(false) }
 
     // Load existing data if editing
     val existingJob = if (postId != null && postType == PostType.Job) {
-        CommunityStore.jobs.firstOrNull { it.id == postId }
+        CommunityPostStore.jobs.firstOrNull { it.id == postId }
     } else null
 
     val existingDonation = if (postId != null && postType == PostType.Donation) {
-        CommunityStore.donations.firstOrNull { it.id == postId }
+        CommunityPostStore.donations.firstOrNull { it.id == postId }
     } else null
 
     var jobTitle by remember { mutableStateOf(existingJob?.title ?: "") }
@@ -100,8 +112,62 @@ fun CreatePostScreen(
 
     val isEditing = postId != null
 
-    val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-        donationPhotoUri = uri
+    fun showAlert(title: String, message: String) {
+        alertTitle = title
+        alertMessage = message
+    }
+
+    val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            donationPhotoUri = result.data?.data
+        }
+    }
+
+    var cameraPhotoUri by remember { mutableStateOf<Uri?>(null) }
+    val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            donationPhotoUri = cameraPhotoUri
+        }
+    }
+
+    fun openCamera() {
+        val photoUri = context.createDonationPhotoUri()
+        cameraPhotoUri = photoUri
+
+        val cameraIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE).apply {
+            putExtra(MediaStore.EXTRA_OUTPUT, photoUri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+        }
+
+        if (cameraIntent.resolveActivity(context.packageManager) == null) {
+            showAlert("Camera Unavailable", "This device does not have a camera app.")
+            return
+        }
+
+        cameraLauncher.launch(cameraIntent)
+    }
+
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+        if (isGranted) {
+            openCamera()
+        } else {
+            showAlert("Camera Permission Required", "Please allow camera permission to take an item photo.")
+        }
+    }
+
+    fun openGallery() {
+        val galleryIntent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI).apply {
+            type = "image/*"
+        }
+        photoPicker.launch(galleryIntent)
+    }
+
+    fun requestCameraPhoto() {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+            openCamera()
+        } else {
+            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+        }
     }
 
     val hasInput = if (postType == PostType.Job) {
@@ -117,11 +183,6 @@ fun CreatePostScreen(
                 donationLocation.isNotBlank() ||
                 donationPhotoUri != null ||
                 donationDescription.isNotBlank()
-    }
-
-    fun showAlert(title: String, message: String) {
-        alertTitle = title
-        alertMessage = message
     }
 
     fun goHome() {
@@ -192,7 +253,12 @@ fun CreatePostScreen(
                     InputField(jobDescription, { jobDescription = it }, "Tell more about the job...", lines = 3)
                 }
                 Spacer(Modifier.height(54.dp))
-                PrimaryButton(if (isEditing) "Save Changes" else "Post Now") {
+                PrimaryButton(
+                    label = if (isPosting) "Posting..." else if (isEditing) "Save Changes" else "Post Now"
+                ) {
+                    if (isPosting) {
+                        return@PrimaryButton
+                    }
                     if (jobTitle.isBlank() || jobLocation.isBlank() || jobDescription.isBlank()) {
                         showAlert("Incomplete Form", "Please complete the job title, location, and description.")
                         return@PrimaryButton
@@ -218,13 +284,30 @@ fun CreatePostScreen(
                     )
 
                     if (isEditing) {
-                        CommunityStore.updateJob(job)
+                        CommunityPostStore.updateJob(job)
                         Toast.makeText(context, "Job updated successfully", Toast.LENGTH_SHORT).show()
+                        navController.popBackStack()
                     } else {
-                        CommunityStore.addJob(job)
-                        Toast.makeText(context, "Job posted successfully", Toast.LENGTH_SHORT).show()
+                        isPosting = true
+                        scope.launch {
+                            val result = CommunityPostStore.addJobToSupabase(
+                                title = jobTitle,
+                                category = jobCategory,
+                                location = jobLocation,
+                                payment = jobPayment,
+                                paymentUnit = jobPaymentUnit,
+                                description = jobDescription
+                            )
+                            isPosting = false
+
+                            result.onSuccess {
+                                Toast.makeText(context, "Job posted successfully", Toast.LENGTH_SHORT).show()
+                                navController.popBackStack()
+                            }.onFailure { error ->
+                                showAlert("Post Failed", error.message ?: "Unable to save this job to Supabase.")
+                            }
+                        }
                     }
-                    navController.popBackStack()
                 }
             } else {
                 LabeledField("Item Name") {
@@ -242,11 +325,17 @@ fun CreatePostScreen(
                 if (!isEditing) {
                     ImageUploadField(
                         photoUri = donationPhotoUri,
-                        onChoosePhoto = { photoPicker.launch("image/*") }
+                        onChoosePhoto = { openGallery() },
+                        onTakePhoto = { requestCameraPhoto() }
                     )
                 }
                 Spacer(Modifier.height(40.dp))
-                PrimaryButton(if (isEditing) "Save Changes" else "Post Donation") {
+                PrimaryButton(
+                    label = if (isPosting) "Posting..." else if (isEditing) "Save Changes" else "Post Donation"
+                ) {
+                    if (isPosting) {
+                        return@PrimaryButton
+                    }
                     if (donationName.isBlank() || donationLocation.isBlank() || donationDescription.isBlank()) {
                         showAlert("Incomplete Form", "Please complete the item name, pickup location, and description.")
                         return@PrimaryButton
@@ -259,6 +348,7 @@ fun CreatePostScreen(
                         showAlert("Invalid Location", "Location must include city and state. Example: George Town, Penang.")
                         return@PrimaryButton
                     }
+                    val selectedPhotoUri = donationPhotoUri
 
                     val donation = DonationPost(
                         id = existingDonation?.id ?: System.currentTimeMillis().toString(),
@@ -272,13 +362,35 @@ fun CreatePostScreen(
                     )
 
                     if (isEditing) {
-                        CommunityStore.updateDonation(donation)
+                        CommunityPostStore.updateDonation(donation)
                         Toast.makeText(context, "Donation updated successfully", Toast.LENGTH_SHORT).show()
+                        navController.popBackStack()
                     } else {
-                        CommunityStore.addDonation(donation)
-                        Toast.makeText(context, "Donation posted successfully", Toast.LENGTH_SHORT).show()
+                        if (selectedPhotoUri == null) {
+                            showAlert("Photo Required", "Please choose one item photo before posting the donation.")
+                            return@PrimaryButton
+                        }
+
+                        isPosting = true
+                        scope.launch {
+                            val result = CommunityPostStore.addDonationToSupabase(
+                                context = context,
+                                itemName = donationName,
+                                itemCategory = donationCategory,
+                                pickupLocation = donationLocation,
+                                description = donationDescription,
+                                photoUri = selectedPhotoUri
+                            )
+                            isPosting = false
+
+                            result.onSuccess {
+                                Toast.makeText(context, "Donation posted successfully", Toast.LENGTH_SHORT).show()
+                                navController.popBackStack()
+                            }.onFailure { error ->
+                                showAlert("Post Failed", error.message ?: "Unable to save this donation to Supabase.")
+                            }
+                        }
                     }
-                    navController.popBackStack()
                 }
             }
         }
@@ -322,7 +434,8 @@ fun CreatePostScreen(
 @Composable
 private fun ImageUploadField(
     photoUri: Uri?,
-    onChoosePhoto: () -> Unit
+    onChoosePhoto: () -> Unit,
+    onTakePhoto: () -> Unit
 ) {
     Column {
         Text("Item Image", color = CommunityColors.TextPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
@@ -351,8 +464,42 @@ private fun ImageUploadField(
                 )
             }
         }
+        Spacer(Modifier.height(10.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            OutlinedButton(
+                onClick = onChoosePhoto,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(42.dp),
+                shape = RoundedCornerShape(10.dp),
+                colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White)
+            ) {
+                Text("Choose Photo", fontSize = 12.sp, color = CommunityColors.TextPrimary)
+            }
+            OutlinedButton(
+                onClick = onTakePhoto,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(42.dp),
+                shape = RoundedCornerShape(10.dp),
+                colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White)
+            ) {
+                Text("Take Photo", fontSize = 12.sp, color = CommunityColors.TextPrimary)
+            }
+        }
         Spacer(Modifier.height(14.dp))
     }
+}
+
+private fun Context.createDonationPhotoUri(): Uri {
+    val imageDirectory = File(cacheDir, "donation_images").apply {
+        mkdirs()
+    }
+    val imageFile = File.createTempFile("donation_", ".jpg", imageDirectory)
+    return FileProvider.getUriForFile(this, "$packageName.fileprovider", imageFile)
 }
 
 @Composable

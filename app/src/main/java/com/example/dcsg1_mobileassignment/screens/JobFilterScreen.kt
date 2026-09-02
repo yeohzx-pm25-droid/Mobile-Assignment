@@ -37,7 +37,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.dcsg1_mobileassignment.communityhelp.data.CommunityData
-import com.example.dcsg1_mobileassignment.communityhelp.data.CommunityStore
 import com.example.dcsg1_mobileassignment.communityhelp.data.JOB_FILTER_ALL
 import com.example.dcsg1_mobileassignment.communityhelp.screens.CommunityColors
 import com.example.dcsg1_mobileassignment.communityhelp.screens.navigateSingleTop
@@ -45,9 +44,9 @@ import com.example.dcsg1_mobileassignment.communityhelp.screens.navigateSingleTo
 @Composable
 fun JobFilterScreen(navController: NavController) {
     // Local draft state so changes only apply once "Apply Filter" is tapped.
-    var jobType by remember { mutableStateOf(CommunityStore.jobTypeFilter) }
-    var state by remember { mutableStateOf(CommunityStore.jobStateFilter) }
-    var salaryUnit by remember { mutableStateOf(CommunityStore.jobSalaryUnitFilter) }
+    var jobType by remember { mutableStateOf(CommunityPostStore.jobTypeFilter) }
+    var state by remember { mutableStateOf(CommunityPostStore.jobStateFilter) }
+    var salaryUnit by remember { mutableStateOf(CommunityPostStore.jobSalaryUnitFilter) }
 
     Column(
         modifier = Modifier
@@ -111,9 +110,9 @@ fun JobFilterScreen(navController: NavController) {
 
             Button(
                 onClick = {
-                    CommunityStore.jobTypeFilter = jobType
-                    CommunityStore.jobStateFilter = state
-                    CommunityStore.jobSalaryUnitFilter = salaryUnit
+                    CommunityPostStore.jobTypeFilter = jobType
+                    CommunityPostStore.jobStateFilter = state
+                    CommunityPostStore.jobSalaryUnitFilter = salaryUnit
                     navController.navigateSingleTop("jobs")
                 },
                 modifier = Modifier

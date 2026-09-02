@@ -37,7 +37,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import com.example.dcsg1_mobileassignment.communityhelp.data.CommunityStore
 import com.example.dcsg1_mobileassignment.communityhelp.model.BottomTab
 import com.example.dcsg1_mobileassignment.communityhelp.screens.CommunityColors
 import com.example.dcsg1_mobileassignment.communityhelp.screens.CommunityScaffold
@@ -50,10 +49,10 @@ fun ProfileScreen(
 ) {
     val user = authViewModel.currentUser
 
-    val jobApplicationsCount = CommunityStore.appliedJobIds.size
-    val postedJobsCount = CommunityStore.jobs.count { it.mine }
-    val donatedItemsCount = CommunityStore.donations.count { it.mine }
-    val reservedItemsCount = CommunityStore.reservedDonationIds.size
+    val jobApplicationsCount = CommunityPostStore.appliedJobIds.size
+    val postedJobsCount = CommunityPostStore.jobs.count { it.mine }
+    val donatedItemsCount = CommunityPostStore.donations.count { it.mine }
+    val reservedItemsCount = CommunityPostStore.reservedDonationIds.size
 
     if (user == null) {
         Box(

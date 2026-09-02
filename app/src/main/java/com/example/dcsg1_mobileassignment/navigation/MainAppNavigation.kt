@@ -1,6 +1,7 @@
 package com.example.dcsg1_mobileassignment.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -10,8 +11,9 @@ import androidx.navigation.navArgument
 import com.example.dcsg1_mobileassignment.communityhelp.model.BottomTab
 import com.example.dcsg1_mobileassignment.communityhelp.model.PostType
 import com.example.dcsg1_mobileassignment.communityhelp.screens.BlankCommunityScreen
-import com.example.dcsg1_mobileassignment.communityhelp.screens.CommunityHomeScreen
 import com.example.dcsg1_mobileassignment.screens.CreatePostScreen
+import com.example.dcsg1_mobileassignment.screens.CommunityPostStore
+import com.example.dcsg1_mobileassignment.screens.CommunityHomeScreenWithSupabase
 import com.example.dcsg1_mobileassignment.screens.DonationDetailScreen
 import com.example.dcsg1_mobileassignment.screens.DonationListScreen
 import com.example.dcsg1_mobileassignment.screens.EditProfileScreen
@@ -29,6 +31,15 @@ import com.example.dcsg1_mobileassignment.viewmodel.AuthViewModel
 fun AppNavigation() {
     val navController = rememberNavController()
     val authViewModel: AuthViewModel = viewModel()
+    val currentUserId = authViewModel.currentUser?.id
+
+    LaunchedEffect(currentUserId) {
+        if (currentUserId == null) {
+            CommunityPostStore.resetLocalPosts()
+        } else {
+            CommunityPostStore.reloadFromSupabase()
+        }
+    }
 
     NavHost(
         navController = navController,
@@ -48,11 +59,11 @@ fun AppNavigation() {
 
         // LoginScreen still navigates to "profile"; this route now opens your Home.
         composable("profile") {
-            CommunityHomeScreen(navController, authViewModel)
+            CommunityHomeScreenWithSupabase(navController, authViewModel)
         }
 
         composable("home") {
-            CommunityHomeScreen(navController, authViewModel)
+            CommunityHomeScreenWithSupabase(navController, authViewModel)
         }
 
         composable("jobs") {

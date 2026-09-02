@@ -4,7 +4,7 @@ import com.example.dcsg1_mobileassignment.communityhelp.model.JobPost
 
 object JobTimeFormatter {
     fun postedLine(job: JobPost): String {
-        val createdAtMillis = job.id.toLongOrNull()
+        val createdAtMillis = CommunityPostStore.createdAtMillisForJob(job.id) ?: job.id.toLongOrNull()
 
         if (createdAtMillis == null) {
             return when {

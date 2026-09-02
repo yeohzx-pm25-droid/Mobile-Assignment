@@ -35,7 +35,6 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import com.example.dcsg1_mobileassignment.communityhelp.data.CommunityStore
 import com.example.dcsg1_mobileassignment.communityhelp.model.JobPost
 import com.example.dcsg1_mobileassignment.communityhelp.screens.CommunityColors
 
@@ -44,7 +43,7 @@ fun JobDetailScreen(
     navController: NavController,
     jobId: String
 ) {
-    val job = CommunityStore.jobs.firstOrNull { it.id == jobId }
+    val job = CommunityPostStore.jobs.firstOrNull { it.id == jobId }
 
     if (job == null) {
         MissingJobScreen(navController)
@@ -150,7 +149,7 @@ fun JobDetailScreen(
 
                     Button(
                         onClick = {
-                            CommunityStore.deleteJob(job.id)
+                            CommunityPostStore.deleteJob(job.id)
                             Toast.makeText(context, "Job deleted successfully", Toast.LENGTH_SHORT).show()
                             navController.popBackStack()
                         },
@@ -169,15 +168,15 @@ fun JobDetailScreen(
                     }
                 }
             } else {
-                val alreadyApplied = CommunityStore.appliedJobIds.contains(job.id)
+                val alreadyApplied = CommunityPostStore.appliedJobIds.contains(job.id)
 
                 Button(
                     onClick = {
                         if (alreadyApplied) {
-                            CommunityStore.unapplyFromJob(job.id)
+                            CommunityPostStore.unapplyFromJob(job.id)
                             Toast.makeText(context, "Application withdrawn", Toast.LENGTH_SHORT).show()
                         } else {
-                            CommunityStore.applyToJob(job.id)
+                            CommunityPostStore.applyToJob(job.id)
                             Toast.makeText(context, "Applied successfully", Toast.LENGTH_SHORT).show()
                         }
                     },

@@ -35,7 +35,6 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import com.example.dcsg1_mobileassignment.communityhelp.data.CommunityStore
 import com.example.dcsg1_mobileassignment.communityhelp.model.DonationPost
 import com.example.dcsg1_mobileassignment.communityhelp.screens.CommunityColors
 
@@ -44,7 +43,7 @@ fun DonationDetailScreen(
     navController: NavController,
     donationId: String
 ) {
-    val donation = CommunityStore.donations.firstOrNull { it.id == donationId }
+    val donation = CommunityPostStore.donations.firstOrNull { it.id == donationId }
 
     if (donation == null) {
         MissingDonationScreen(navController)
@@ -52,7 +51,7 @@ fun DonationDetailScreen(
     }
 
     val context = LocalContext.current
-    val reserved = CommunityStore.reservedDonationIds.contains(donation.id)
+    val reserved = CommunityPostStore.reservedDonationIds.contains(donation.id)
 
     Column(
         modifier = Modifier
@@ -66,11 +65,13 @@ fun DonationDetailScreen(
                 .fillMaxSize()
                 .padding(horizontal = 20.dp, vertical = 22.dp)
         ) {
-            Box(
+            RemoteDonationImage(
+                imageUrl = CommunityPostStore.imageUrlForDonation(donation.id),
+                fallbackTint = donation.tint,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(180.dp)
-                    .background(Color(donation.tint), RoundedCornerShape(12.dp))
+                    .height(180.dp),
+                cornerRadius = 12.dp
             )
 
             Spacer(Modifier.height(20.dp))
@@ -158,7 +159,7 @@ fun DonationDetailScreen(
 
                     Button(
                         onClick = {
-                            CommunityStore.deleteDonation(donation.id)
+                            CommunityPostStore.deleteDonation(donation.id)
                             Toast.makeText(context, "Donation deleted", Toast.LENGTH_SHORT).show()
                             navController.popBackStack()
                         },
@@ -180,10 +181,10 @@ fun DonationDetailScreen(
                 Button(
                     onClick = {
                         if (reserved) {
-                            CommunityStore.unreserveDonation(donation.id)
+                            CommunityPostStore.unreserveDonation(donation.id)
                             Toast.makeText(context, "Reservation cancelled", Toast.LENGTH_SHORT).show()
                         } else {
-                            CommunityStore.reserveDonation(donation.id)
+                            CommunityPostStore.reserveDonation(donation.id)
                             Toast.makeText(context, "Item reserved", Toast.LENGTH_SHORT).show()
                         }
                     },

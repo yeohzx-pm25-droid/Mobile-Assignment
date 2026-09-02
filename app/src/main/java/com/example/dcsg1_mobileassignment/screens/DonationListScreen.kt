@@ -40,7 +40,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.dcsg1_mobileassignment.communityhelp.data.CommunityData
-import com.example.dcsg1_mobileassignment.communityhelp.data.CommunityStore
 import com.example.dcsg1_mobileassignment.communityhelp.model.BottomTab
 import com.example.dcsg1_mobileassignment.communityhelp.model.DonationPost
 import com.example.dcsg1_mobileassignment.communityhelp.screens.CommunityColors
@@ -54,7 +53,7 @@ fun DonationListScreen(navController: NavController) {
 
     val categories = remember { listOf("All") + CommunityData.donationCategories }
 
-    val filtered = CommunityStore.donations.filter { donation ->
+    val filtered = CommunityPostStore.donations.filter { donation ->
         val matchesCategory = selectedCategory == "All" || donation.category == selectedCategory
         val matchesQuery = query.isBlank() ||
                 donation.title.contains(query, ignoreCase = true) ||
@@ -171,7 +170,7 @@ fun DonationItemCard(
     donation: DonationPost,
     onClick: () -> Unit
 ) {
-    val reserved = CommunityStore.reservedDonationIds.contains(donation.id)
+    val reserved = CommunityPostStore.reservedDonationIds.contains(donation.id)
 
     Card(
         modifier = Modifier
@@ -187,10 +186,11 @@ fun DonationItemCard(
             modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
-                modifier = Modifier
-                    .size(56.dp)
-                    .background(Color(donation.tint), RoundedCornerShape(10.dp))
+            RemoteDonationImage(
+                imageUrl = CommunityPostStore.imageUrlForDonation(donation.id),
+                fallbackTint = donation.tint,
+                modifier = Modifier.size(56.dp),
+                cornerRadius = 10.dp
             )
 
             Spacer(Modifier.width(14.dp))

@@ -25,7 +25,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import com.example.dcsg1_mobileassignment.communityhelp.data.CommunityStore
 import com.example.dcsg1_mobileassignment.communityhelp.screens.CommunityColors
 import com.example.dcsg1_mobileassignment.communityhelp.screens.JobCard
 
@@ -80,7 +79,7 @@ fun UserActivityListScreen(
         ) {
             when (activityType) {
                 "appliedJobs" -> {
-                    val appliedJobs = CommunityStore.jobs.filter { CommunityStore.appliedJobIds.contains(it.id) }
+                    val appliedJobs = CommunityPostStore.jobs.filter { CommunityPostStore.appliedJobIds.contains(it.id) }
                     if (appliedJobs.isEmpty()) {
                         item { EmptyState("No job applications yet.") }
                     } else {
@@ -92,7 +91,7 @@ fun UserActivityListScreen(
                     }
                 }
                 "myJobs" -> {
-                    val myJobs = CommunityStore.jobs.filter { it.mine }
+                    val myJobs = CommunityPostStore.jobs.filter { it.mine }
                     if (myJobs.isEmpty()) {
                         item { EmptyState("You haven't posted any jobs.") }
                     } else {
@@ -104,7 +103,7 @@ fun UserActivityListScreen(
                     }
                 }
                 "myDonations" -> {
-                    val myDonations = CommunityStore.donations.filter { it.mine }
+                    val myDonations = CommunityPostStore.donations.filter { it.mine }
                     if (myDonations.isEmpty()) {
                         item { EmptyState("You haven't donated any items.") }
                     } else {
@@ -116,7 +115,7 @@ fun UserActivityListScreen(
                     }
                 }
                 "reservedDonations" -> {
-                    val reservedDonations = CommunityStore.donations.filter { CommunityStore.reservedDonationIds.contains(it.id) }
+                    val reservedDonations = CommunityPostStore.donations.filter { CommunityPostStore.reservedDonationIds.contains(it.id) }
                     if (reservedDonations.isEmpty()) {
                         item { EmptyState("No reserved items yet.") }
                     } else {

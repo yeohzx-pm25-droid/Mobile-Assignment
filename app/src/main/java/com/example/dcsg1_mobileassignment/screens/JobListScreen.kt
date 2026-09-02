@@ -37,7 +37,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import com.example.dcsg1_mobileassignment.communityhelp.data.CommunityStore
 import com.example.dcsg1_mobileassignment.communityhelp.data.JOB_FILTER_ALL
 import com.example.dcsg1_mobileassignment.communityhelp.model.BottomTab
 import com.example.dcsg1_mobileassignment.communityhelp.model.JobPost
@@ -51,7 +50,7 @@ private val quickJobTypes = listOf(JOB_FILTER_ALL, "Part-time", "Full-time", "On
 @Composable
 fun JobListScreen(navController: NavController) {
     CommunityScaffold(navController, BottomTab.Jobs) { innerPadding ->
-        val jobs = CommunityStore.filteredJobs
+        val jobs = CommunityPostStore.filteredJobs
 
         LazyColumn(
             modifier = Modifier
@@ -75,17 +74,17 @@ fun JobListScreen(navController: NavController) {
                 Spacer(Modifier.height(16.dp))
 
                 JobSearchBar(
-                    query = CommunityStore.jobSearchQuery,
-                    onQueryChange = { CommunityStore.jobSearchQuery = it },
-                    activeFilterCount = CommunityStore.activeJobFilterCount,
+                    query = CommunityPostStore.jobSearchQuery,
+                    onQueryChange = { CommunityPostStore.jobSearchQuery = it },
+                    activeFilterCount = CommunityPostStore.activeJobFilterCount,
                     onFilterClick = { navController.navigateSingleTop("jobFilter") }
                 )
 
                 Spacer(Modifier.height(14.dp))
 
                 JobTypeChipsRow(
-                    selected = CommunityStore.jobTypeFilter,
-                    onSelected = { CommunityStore.jobTypeFilter = it }
+                    selected = CommunityPostStore.jobTypeFilter,
+                    onSelected = { CommunityPostStore.jobTypeFilter = it }
                 )
 
                 Spacer(Modifier.height(18.dp))
@@ -239,7 +238,7 @@ private fun JobListCard(
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold
                     )
-                    if (CommunityStore.appliedJobIds.contains(job.id)) {
+                    if (CommunityPostStore.appliedJobIds.contains(job.id)) {
                         Spacer(Modifier.width(6.dp))
                         Surface(
                             color = CommunityColors.SoftSurface,
