@@ -67,6 +67,7 @@ import com.example.dcsg1_mobileassignment.communityhelp.model.JobPost
 import com.example.dcsg1_mobileassignment.communityhelp.model.PostType
 import com.example.dcsg1_mobileassignment.communityhelp.screens.CommunityColors
 import com.example.dcsg1_mobileassignment.communityhelp.screens.navigateSingleTop
+import com.example.dcsg1_mobileassignment.communityhelp.validation.LocationValidator
 import com.example.dcsg1_mobileassignment.communityhelp.validation.PostValidator
 import kotlinx.coroutines.launch
 import java.io.File
@@ -227,7 +228,7 @@ fun CreatePostScreen(
                     jobCategory = it
                 }
                 LabeledField("Location") {
-                    InputField(jobLocation, { jobLocation = it }, "e.g. George Town, Penang")
+                    InputField(jobLocation, { jobLocation = it }, "e.g. 77 Lorong Lembah Permai 3, Tanjong Bungah, Pulau Pinang.")
                 }
                 LabeledField("Salary / Payment") {
                     OutlinedTextField(
@@ -267,7 +268,7 @@ fun CreatePostScreen(
                         return@PrimaryButton
                     }
                     if (!PostValidator.isValidLocationWithState(jobLocation)) {
-                        showAlert("Invalid Location", "Location must include city and state. Example: George Town, Penang.")
+                        showAlert("Invalid Location", "Location must include a full Malaysia address and state. Example: 178, Taman Mangga, 05400 Alor Setar, Kedah.")
                         return@PrimaryButton
                     }
                     if (jobPaymentUnit != "Negotiable" && !PostValidator.isValidPaymentAmount(jobPayment)) {
@@ -275,24 +276,31 @@ fun CreatePostScreen(
                         return@PrimaryButton
                     }
 
-                    val job = JobPost(
-                        id = existingJob?.id ?: System.currentTimeMillis().toString(),
-                        title = jobTitle.trim(),
-                        category = jobCategory,
-                        location = jobLocation.trim(),
-                        payment = PostValidator.buildPayment(jobPayment, jobPaymentUnit),
-                        description = jobDescription.trim(),
-                        posted = existingJob?.posted ?: "Posted just now",
-                        mine = true
-                    )
+                    isPosting = true
+                    scope.launch {
+                        if (!LocationValidator.isRealMalaysiaLocation(context, jobLocation)) {
+                            isPosting = false
+                            showAlert("Invalid Location", "Please enter a real Malaysia address that can be found on the map. Example: 178, Taman Mangga, 05400 Alor Setar, Kedah.")
+                            return@launch
+                        }
 
-                    if (isEditing) {
-                        CommunityPostStore.updateJob(job)
-                        Toast.makeText(context, "Job updated successfully", Toast.LENGTH_SHORT).show()
-                        navController.popBackStack()
-                    } else {
-                        isPosting = true
-                        scope.launch {
+                        val job = JobPost(
+                            id = existingJob?.id ?: System.currentTimeMillis().toString(),
+                            title = jobTitle.trim(),
+                            category = jobCategory,
+                            location = jobLocation.trim(),
+                            payment = PostValidator.buildPayment(jobPayment, jobPaymentUnit),
+                            description = jobDescription.trim(),
+                            posted = existingJob?.posted ?: "Posted just now",
+                            mine = true
+                        )
+
+                        if (isEditing) {
+                            CommunityPostStore.updateJob(job)
+                            isPosting = false
+                            Toast.makeText(context, "Job updated successfully", Toast.LENGTH_SHORT).show()
+                            navController.popBackStack()
+                        } else {
                             val result = CommunityPostStore.addJobToSupabase(
                                 title = jobTitle,
                                 category = jobCategory,
@@ -306,8 +314,8 @@ fun CreatePostScreen(
                             result.onSuccess {
                                 Toast.makeText(context, "Job posted successfully", Toast.LENGTH_SHORT).show()
                                 navController.popBackStack()
-                            }.onFailure { error ->
-                                showAlert("Post Failed", error.message ?: "Unable to save this job to Supabase.")
+                            }.onFailure {
+                                showAlert("Post Failed", "Unable to post job. Please try again.")
                             }
                         }
                     }
@@ -320,7 +328,7 @@ fun CreatePostScreen(
                     donationCategory = it
                 }
                 LabeledField("Pickup Location") {
-                    InputField(donationLocation, { donationLocation = it }, "e.g. George Town, Penang")
+                    InputField(donationLocation, { donationLocation = it }, "Please Enter a Full Malaysia Address.")
                 }
                 LabeledField("Description") {
                     InputField(donationDescription, { donationDescription = it }, "Tell more about the item...", lines = 4)
@@ -348,34 +356,42 @@ fun CreatePostScreen(
                         return@PrimaryButton
                     }
                     if (!PostValidator.isValidLocationWithState(donationLocation)) {
-                        showAlert("Invalid Location", "Location must include city and state. Example: George Town, Penang.")
+                        showAlert("Invalid Location", "Location must include a full Malaysia address and state. Example: 178, Taman Mangga, 05400 Alor Setar, Kedah.")
                         return@PrimaryButton
                     }
                     val selectedPhotoUri = donationPhotoUri
 
-                    val donation = DonationPost(
-                        id = existingDonation?.id ?: System.currentTimeMillis().toString(),
-                        title = donationName.trim(),
-                        category = donationCategory,
-                        location = donationLocation.trim(),
-                        description = donationDescription.trim(),
-                        posted = existingDonation?.posted ?: "Posted just now",
-                        tint = PostValidator.tintForCategory(donationCategory),
-                        mine = true
-                    )
-
-                    if (isEditing) {
-                        CommunityPostStore.updateDonation(donation)
-                        Toast.makeText(context, "Donation updated successfully", Toast.LENGTH_SHORT).show()
-                        navController.popBackStack()
-                    } else {
-                        if (selectedPhotoUri == null) {
-                            showAlert("Photo Required", "Please choose one item photo before posting the donation.")
-                            return@PrimaryButton
+                    isPosting = true
+                    scope.launch {
+                        if (!LocationValidator.isRealMalaysiaLocation(context, donationLocation)) {
+                            isPosting = false
+                            showAlert("Invalid Location", "Please enter a real Malaysia address that can be found on the map. Example: 178, Taman Mangga, 05400 Alor Setar, Kedah.")
+                            return@launch
                         }
 
-                        isPosting = true
-                        scope.launch {
+                        val donation = DonationPost(
+                            id = existingDonation?.id ?: System.currentTimeMillis().toString(),
+                            title = donationName.trim(),
+                            category = donationCategory,
+                            location = donationLocation.trim(),
+                            description = donationDescription.trim(),
+                            posted = existingDonation?.posted ?: "Posted just now",
+                            tint = PostValidator.tintForCategory(donationCategory),
+                            mine = true
+                        )
+
+                        if (isEditing) {
+                            CommunityPostStore.updateDonation(donation)
+                            isPosting = false
+                            Toast.makeText(context, "Donation updated successfully", Toast.LENGTH_SHORT).show()
+                            navController.popBackStack()
+                        } else {
+                            if (selectedPhotoUri == null) {
+                                isPosting = false
+                                showAlert("Photo Required", "Please choose one item photo before posting the donation.")
+                                return@launch
+                            }
+
                             val result = CommunityPostStore.addDonationToSupabase(
                                 context = context,
                                 itemName = donationName,
@@ -389,8 +405,8 @@ fun CreatePostScreen(
                             result.onSuccess {
                                 Toast.makeText(context, "Donation posted successfully", Toast.LENGTH_SHORT).show()
                                 navController.popBackStack()
-                            }.onFailure { error ->
-                                showAlert("Post Failed", error.message ?: "Unable to save this donation to Supabase.")
+                            }.onFailure {
+                                showAlert("Post Failed", "Unable to post donation. Please try again.")
                             }
                         }
                     }

@@ -99,7 +99,7 @@ class AuthViewModel : ViewModel() {
             null
         } catch (e: Exception) {
             e.printStackTrace()
-            e.message ?: "Login failed. Please check your email and password."
+            "Login failed. Please check your email and password."
         }
     }
 
@@ -152,7 +152,7 @@ class AuthViewModel : ViewModel() {
         } catch (e: Exception) {
             e.printStackTrace()
             println("REGISTER ERROR: ${e.message}")
-            e.message ?: "Registration failed. Please try again."
+            "Registration failed. Please try again."
         }
     }
 
@@ -233,7 +233,7 @@ class AuthViewModel : ViewModel() {
             null
         } catch (e: Exception) {
             e.printStackTrace()
-            e.message ?: "Failed to update profile."
+            "Failed to update profile. Please try again."
         }
     }
 }

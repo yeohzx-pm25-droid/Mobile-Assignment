@@ -1,6 +1,7 @@
 package com.example.dcsg1_mobileassignment.screens
 
 import android.widget.Toast
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -27,10 +28,17 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
@@ -39,6 +47,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.dcsg1_mobileassignment.communityhelp.model.JobPost
 import com.example.dcsg1_mobileassignment.communityhelp.screens.CommunityColors
+import com.example.dcsg1_mobileassignment.utils.openLocationInMaps
 import kotlinx.coroutines.launch
 
 @Composable
@@ -55,6 +64,7 @@ fun JobDetailScreen(
 
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
+    var isDeleting by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -98,17 +108,10 @@ fun JobDetailScreen(
                 color = CommunityColors.FieldBorder
             )
 
-            InfoRow(
-                icon = {
-                    Icon(
-                        imageVector = Icons.Filled.LocationOn,
-                        contentDescription = null,
-                        tint = CommunityColors.TextMuted,
-                        modifier = Modifier.size(20.dp)
-                    )
-                },
-                text = job.location,
-                underline = true
+            MapLocationCard(
+                title = "Location",
+                location = job.location,
+                onClick = { context.openLocationInMaps(job.location) }
             )
 
             Spacer(Modifier.height(18.dp))
@@ -153,18 +156,39 @@ fun JobDetailScreen(
 
                     Button(
                         onClick = {
-                            CommunityPostStore.deleteJob(job.id)
-                            Toast.makeText(context, "Job deleted successfully", Toast.LENGTH_SHORT).show()
-                            navController.popBackStack()
+                            if (!isDeleting) {
+                                isDeleting = true
+                                coroutineScope.launch {
+                                    val result = CommunityPostStore.deleteJobFromSupabase(job.id)
+                                    isDeleting = false
+
+                                    result
+                                        .onSuccess {
+                                            Toast.makeText(context, "Job deleted successfully", Toast.LENGTH_SHORT).show()
+                                            navController.popBackStack()
+                                        }
+                                        .onFailure {
+                                            Toast.makeText(
+                                                context,
+                                                "Delete failed. Please try again.",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                        }
+                                }
+                            }
                         },
+                        enabled = !isDeleting,
                         modifier = Modifier
                             .weight(1f)
                             .height(58.dp),
                         shape = RoundedCornerShape(10.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE53935))
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFE53935),
+                            disabledContainerColor = Color(0xFFE57373)
+                        )
                     ) {
                         Text(
-                            text = "Delete Post",
+                            text = if (isDeleting) "Deleting..." else "Delete Post",
                             color = Color.White,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold
@@ -274,12 +298,127 @@ private fun JobHeader(job: JobPost) {
 }
 
 @Composable
+private fun MapLocationCard(
+    title: String,
+    location: String,
+    onClick: () -> Unit
+) {
+    Column {
+        Text(
+            text = title,
+            color = CommunityColors.TextPrimary,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(Modifier.height(10.dp))
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(132.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(Color(0xFFEAF2EC))
+                .clickable { onClick() }
+        ) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val mainRoad = Color(0xFFD3DDD4)
+                val smallRoad = Color(0xFFFFFFFF).copy(alpha = 0.9f)
+                val park = Color(0xFFCFE8D1)
+
+                drawRect(
+                    color = park,
+                    topLeft = Offset(size.width * 0.54f, 0f),
+                    size = androidx.compose.ui.geometry.Size(size.width * 0.46f, size.height * 0.34f)
+                )
+                drawLine(
+                    color = mainRoad,
+                    start = Offset(-20f, size.height * 0.72f),
+                    end = Offset(size.width + 20f, size.height * 0.54f),
+                    strokeWidth = 18f,
+                    cap = StrokeCap.Round
+                )
+                drawLine(
+                    color = mainRoad,
+                    start = Offset(size.width * 0.16f, -20f),
+                    end = Offset(size.width * 0.34f, size.height + 20f),
+                    strokeWidth = 16f,
+                    cap = StrokeCap.Round
+                )
+                drawLine(
+                    color = smallRoad,
+                    start = Offset(-20f, size.height * 0.32f),
+                    end = Offset(size.width + 20f, size.height * 0.24f),
+                    strokeWidth = 8f,
+                    cap = StrokeCap.Round
+                )
+                drawLine(
+                    color = smallRoad,
+                    start = Offset(size.width * 0.68f, -20f),
+                    end = Offset(size.width * 0.78f, size.height + 20f),
+                    strokeWidth = 8f,
+                    cap = StrokeCap.Round
+                )
+            }
+
+            Surface(
+                modifier = Modifier
+                    .size(50.dp)
+                    .align(Alignment.Center),
+                color = Color.White.copy(alpha = 0.95f),
+                shape = RoundedCornerShape(25.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Filled.LocationOn,
+                        contentDescription = null,
+                        tint = CommunityColors.Green,
+                        modifier = Modifier.size(30.dp)
+                    )
+                }
+            }
+
+            Row(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .fillMaxWidth()
+                    .background(Color.White.copy(alpha = 0.9f))
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.LocationOn,
+                    contentDescription = null,
+                    tint = CommunityColors.TextMuted,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = location,
+                    color = CommunityColors.TextPrimary,
+                    fontSize = 12.sp,
+                    textDecoration = TextDecoration.Underline
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun InfoRow(
     icon: @Composable () -> Unit,
     text: String,
-    underline: Boolean
+    underline: Boolean,
+    onClick: (() -> Unit)? = null
 ) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
+    val rowModifier = if (onClick == null) {
+        Modifier
+    } else {
+        Modifier.clickable { onClick() }
+    }
+
+    Row(
+        modifier = rowModifier,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
         icon()
         Spacer(Modifier.width(14.dp))
         Text(

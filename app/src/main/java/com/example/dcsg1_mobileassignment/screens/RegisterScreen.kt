@@ -15,7 +15,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
@@ -79,7 +79,7 @@ fun RegisterScreen(
             .padding(horizontal = 26.dp)
     ) {
         Icon(
-            imageVector = Icons.Filled.ArrowBack,
+            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
             contentDescription = "Back",
             tint = CommunityColors.TextPrimary,
             modifier = Modifier
@@ -266,7 +266,7 @@ fun RegisterScreen(
                                         launchSingleTop = true
                                     }
                                 } else {
-                                    // Show the real reason from Supabase instead of guessing.
+                                    // Show a short friendly message instead of the backend error.
                                     message = error
                                     emailError = true
                                     showErrorDialog = true

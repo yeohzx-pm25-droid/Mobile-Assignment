@@ -165,7 +165,7 @@ object CommunityPostStore {
 
             lastRemotePostError = null
         } catch (e: Exception) {
-            lastRemotePostError = e.message ?: "Unable to load posts from Supabase."
+            lastRemotePostError = "Unable to load posts. Please try again."
         } finally {
             isLoadingRemotePosts = false
         }
@@ -246,6 +246,62 @@ object CommunityPostStore {
             val post = row.toDonationPost(currentUserId)
             donations.add(0, post)
             post
+        }
+    }
+
+    suspend fun deleteJobFromSupabase(jobId: String): Result<Unit> {
+        return runCatching {
+            if (!jobId.isSampleJobId()) {
+                supabase.auth.currentUserOrNull()
+                    ?: error("Please login before deleting a job.")
+
+                withContext(Dispatchers.IO) {
+                    supabase.from("jobs").delete {
+                        filter {
+                            eq("id", jobId)
+                        }
+                    }
+                    ensureRemoteRowDeleted(
+                        tableName = "jobs",
+                        postId = jobId,
+                        errorMessage = "Delete failed. Please try again."
+                    )
+                }
+            }
+
+            deleteJob(jobId)
+        }
+    }
+
+    suspend fun deleteDonationFromSupabase(donationId: String): Result<Unit> {
+        return runCatching {
+            val imageUrl = donationImageUrls[donationId]
+
+            if (!donationId.isSampleDonationId()) {
+                supabase.auth.currentUserOrNull()
+                    ?: error("Please login before deleting a donation.")
+
+                withContext(Dispatchers.IO) {
+                    supabase.from("donations").delete {
+                        filter {
+                            eq("id", donationId)
+                        }
+                    }
+                    ensureRemoteRowDeleted(
+                        tableName = "donations",
+                        postId = donationId,
+                        errorMessage = "Delete failed. Please try again."
+                    )
+
+                    storagePathFromDonationImageUrl(imageUrl)?.let { imagePath ->
+                        runCatching {
+                            supabase.storage.from(DONATION_IMAGE_BUCKET).delete(imagePath)
+                        }
+                    }
+                }
+            }
+
+            deleteDonation(donationId)
         }
     }
 
@@ -356,6 +412,11 @@ private data class JobApplicationRow(
 )
 
 @Serializable
+private data class DeletedPostRow(
+    val id: String
+)
+
+@Serializable
 private data class SupabaseJobRow(
     val id: String,
     @SerialName("user_id") val userId: String,
@@ -463,6 +524,40 @@ private fun uploadFileNameFor(userId: String, mimeType: String?): String {
         .getExtensionFromMimeType(mimeType)
         ?: "jpg"
     return "$userId/${System.currentTimeMillis()}.$extension"
+}
+
+private fun String.isSampleJobId(): Boolean {
+    return startsWith("job-")
+}
+
+private fun String.isSampleDonationId(): Boolean {
+    return startsWith("donation-")
+}
+
+private fun storagePathFromDonationImageUrl(imageUrl: String?): String? {
+    val publicBucketPrefix = "$SUPABASE_PUBLIC_URL/storage/v1/object/public/$DONATION_IMAGE_BUCKET/"
+    return imageUrl
+        ?.takeIf { it.startsWith(publicBucketPrefix) }
+        ?.removePrefix(publicBucketPrefix)
+        ?.takeIf { it.isNotBlank() }
+}
+
+private suspend fun ensureRemoteRowDeleted(
+    tableName: String,
+    postId: String,
+    errorMessage: String
+) {
+    val remainingRows = supabase.from(tableName)
+        .select {
+            filter {
+                eq("id", postId)
+            }
+        }
+        .decodeList<DeletedPostRow>()
+
+    if (remainingRows.isNotEmpty()) {
+        error(errorMessage)
+    }
 }
 
 private fun readBytesFromUri(context: Context, photoUri: Uri): ByteArray {
