@@ -143,6 +143,11 @@ class AuthViewModel : ViewModel() {
                     put("phone", phone)
                 }
             }
+            // signUpWith can start an active session immediately (when email
+            // confirmation is off). We want registering to always require a
+            // real, deliberate login afterwards so the user proves they know
+            // their password - so sign that session back out right away.
+            supabase.auth.signOut(SignOutScope.LOCAL)
             null
         } catch (e: Exception) {
             e.printStackTrace()

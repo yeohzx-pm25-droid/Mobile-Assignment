@@ -128,7 +128,13 @@ object CommunityPostStore {
                     }
                     .decodeList<SupabaseDonationRow>()
 
-                remoteJobs to remoteDonations
+                val myApplications = supabase.from("job_applications")
+                    .select {
+                        filter { eq("applicant_id", currentUserId) }
+                    }
+                    .decodeList<JobApplicationRow>()
+
+                Triple(remoteJobs, remoteDonations, myApplications)
             }
 
             jobCreatedAtMillis.clear()
@@ -153,6 +159,9 @@ object CommunityPostStore {
             donations.clear()
             donations.addAll(loadedDonations)
             donations.addAll(CommunityData.sampleDonations)
+
+            appliedJobIds.clear()
+            appliedJobIds.addAll(remoteData.third.map { it.jobId })
 
             lastRemotePostError = null
         } catch (e: Exception) {
@@ -240,14 +249,44 @@ object CommunityPostStore {
         }
     }
 
-    fun applyToJob(jobId: String) {
-        if (!appliedJobIds.contains(jobId)) {
-            appliedJobIds.add(jobId)
+    suspend fun applyToJob(jobId: String) {
+        val userId = supabase.auth.currentUserOrNull()?.id ?: return
+        if (appliedJobIds.contains(jobId)) return
+
+        appliedJobIds.add(jobId)
+        try {
+            withContext(Dispatchers.IO) {
+                supabase.from("job_applications").insert(
+                    JobApplicationInsert(
+                        jobId = jobId,
+                        applicantId = userId,
+                        message = "",
+                        status = "pending"
+                    )
+                )
+            }
+        } catch (e: Exception) {
+            appliedJobIds.remove(jobId)
+            throw e
         }
     }
 
-    fun unapplyFromJob(jobId: String) {
+    suspend fun unapplyFromJob(jobId: String) {
+        val userId = supabase.auth.currentUserOrNull()?.id ?: return
         appliedJobIds.remove(jobId)
+        try {
+            withContext(Dispatchers.IO) {
+                supabase.from("job_applications").delete {
+                    filter {
+                        eq("job_id", jobId)
+                        eq("applicant_id", userId)
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            appliedJobIds.add(jobId)
+            throw e
+        }
     }
 
     fun reserveDonation(donationId: String) {
@@ -301,6 +340,19 @@ private data class SupabaseJobInsert(
     @SerialName("payment_period") val paymentPeriod: String,
     @SerialName("is_negotiable") val isNegotiable: Boolean,
     val description: String
+)
+
+@Serializable
+private data class JobApplicationInsert(
+    @SerialName("job_id") val jobId: String,
+    @SerialName("applicant_id") val applicantId: String,
+    val message: String = "",
+    val status: String = "pending"
+)
+
+@Serializable
+private data class JobApplicationRow(
+    @SerialName("job_id") val jobId: String
 )
 
 @Serializable

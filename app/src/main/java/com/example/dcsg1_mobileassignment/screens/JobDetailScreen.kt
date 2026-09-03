@@ -27,6 +27,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -38,6 +39,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.dcsg1_mobileassignment.communityhelp.model.JobPost
 import com.example.dcsg1_mobileassignment.communityhelp.screens.CommunityColors
+import kotlinx.coroutines.launch
 
 @Composable
 fun JobDetailScreen(
@@ -52,6 +54,7 @@ fun JobDetailScreen(
     }
 
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
 
     Column(
         modifier = Modifier
@@ -173,12 +176,18 @@ fun JobDetailScreen(
 
                 Button(
                     onClick = {
-                        if (alreadyApplied) {
-                            CommunityPostStore.unapplyFromJob(job.id)
-                            Toast.makeText(context, "Application withdrawn", Toast.LENGTH_SHORT).show()
-                        } else {
-                            CommunityPostStore.applyToJob(job.id)
-                            Toast.makeText(context, "Applied successfully", Toast.LENGTH_SHORT).show()
+                        coroutineScope.launch {
+                            try {
+                                if (alreadyApplied) {
+                                    CommunityPostStore.unapplyFromJob(job.id)
+                                    Toast.makeText(context, "Application withdrawn", Toast.LENGTH_SHORT).show()
+                                } else {
+                                    CommunityPostStore.applyToJob(job.id)
+                                    Toast.makeText(context, "Applied successfully", Toast.LENGTH_SHORT).show()
+                                }
+                            } catch (e: Exception) {
+                                Toast.makeText(context, "Something went wrong. Please try again.", Toast.LENGTH_SHORT).show()
+                            }
                         }
                     },
                     modifier = Modifier
