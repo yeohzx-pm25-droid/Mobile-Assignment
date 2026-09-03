@@ -35,6 +35,8 @@ object CommunityPostStore {
     }
 
     val appliedJobIds = mutableStateListOf<String>()
+    // jobId -> status ("pending" / "accepted" / "rejected") for MY OWN applications.
+    val appliedJobStatuses = mutableStateMapOf<String, String>()
     val reservedDonationIds = mutableStateListOf<String>()
 
     private val jobCreatedAtMillis = mutableStateMapOf<String, Long>()
@@ -92,6 +94,7 @@ object CommunityPostStore {
         donations.addAll(CommunityData.sampleDonations)
         appliedJobIds.clear()
         reservedDonationIds.clear()
+        appliedJobStatuses.clear()
         jobCreatedAtMillis.clear()
         donationCreatedAtMillis.clear()
         donationImageUrls.clear()
@@ -162,6 +165,8 @@ object CommunityPostStore {
 
             appliedJobIds.clear()
             appliedJobIds.addAll(remoteData.third.map { it.jobId })
+            appliedJobStatuses.clear()
+            remoteData.third.forEach { appliedJobStatuses[it.jobId] = it.status }
 
             lastRemotePostError = null
         } catch (e: Exception) {
@@ -305,17 +310,20 @@ object CommunityPostStore {
         }
     }
 
-    suspend fun applyToJob(jobId: String) {
+    suspend fun applyToJob(jobId: String, applicantName: String, applicantPhone: String) {
         val userId = supabase.auth.currentUserOrNull()?.id ?: return
         if (appliedJobIds.contains(jobId)) return
 
         appliedJobIds.add(jobId)
+        appliedJobStatuses[jobId] = "pending"
         try {
             withContext(Dispatchers.IO) {
                 supabase.from("job_applications").insert(
                     JobApplicationInsert(
                         jobId = jobId,
                         applicantId = userId,
+                        applicantName = applicantName.trim(),
+                        applicantPhone = applicantPhone.trim(),
                         message = "",
                         status = "pending"
                     )
@@ -323,6 +331,7 @@ object CommunityPostStore {
             }
         } catch (e: Exception) {
             appliedJobIds.remove(jobId)
+            appliedJobStatuses.remove(jobId)
             throw e
         }
     }
@@ -330,6 +339,7 @@ object CommunityPostStore {
     suspend fun unapplyFromJob(jobId: String) {
         val userId = supabase.auth.currentUserOrNull()?.id ?: return
         appliedJobIds.remove(jobId)
+        val previousStatus = appliedJobStatuses.remove(jobId)
         try {
             withContext(Dispatchers.IO) {
                 supabase.from("job_applications").delete {
@@ -341,7 +351,36 @@ object CommunityPostStore {
             }
         } catch (e: Exception) {
             appliedJobIds.add(jobId)
+            previousStatus?.let { appliedJobStatuses[jobId] = it }
             throw e
+        }
+    }
+
+    // ==========================================
+    // JOB APPLICANTS - job poster's view (Person 1 accepting/rejecting Person 2)
+    // ==========================================
+
+    suspend fun loadApplicantsForJob(jobId: String): Result<List<JobApplicant>> {
+        return runCatching {
+            withContext(Dispatchers.IO) {
+                supabase.from("job_applications")
+                    .select {
+                        filter { eq("job_id", jobId) }
+                        order("created_at", Order.DESCENDING)
+                    }
+                    .decodeList<JobApplicant>()
+            }
+        }
+    }
+
+    suspend fun setApplicationStatus(applicationId: String, newStatus: String): Result<Unit> {
+        return runCatching {
+            withContext(Dispatchers.IO) {
+                supabase.from("job_applications")
+                    .update(JobApplicationStatusUpdate(status = newStatus)) {
+                        filter { eq("id", applicationId) }
+                    }
+            }
         }
     }
 
@@ -402,13 +441,33 @@ private data class SupabaseJobInsert(
 private data class JobApplicationInsert(
     @SerialName("job_id") val jobId: String,
     @SerialName("applicant_id") val applicantId: String,
+    @SerialName("applicant_name") val applicantName: String,
+    @SerialName("applicant_phone") val applicantPhone: String,
     val message: String = "",
     val status: String = "pending"
 )
 
 @Serializable
 private data class JobApplicationRow(
-    @SerialName("job_id") val jobId: String
+    @SerialName("job_id") val jobId: String,
+    val status: String = "pending"
+)
+
+@Serializable
+private data class JobApplicationStatusUpdate(
+    val status: String
+)
+
+// One applicant's submitted details for a job, as seen by the job poster.
+@Serializable
+data class JobApplicant(
+    val id: String,
+    @SerialName("job_id") val jobId: String,
+    @SerialName("applicant_id") val applicantId: String,
+    @SerialName("applicant_name") val applicantName: String,
+    @SerialName("applicant_phone") val applicantPhone: String,
+    val status: String,
+    @SerialName("created_at") val createdAt: String? = null
 )
 
 @Serializable

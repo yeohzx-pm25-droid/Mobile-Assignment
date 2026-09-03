@@ -17,16 +17,21 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -41,19 +46,23 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.dcsg1_mobileassignment.communityhelp.model.JobPost
 import com.example.dcsg1_mobileassignment.communityhelp.screens.CommunityColors
+import com.example.dcsg1_mobileassignment.utils.Validation
 import com.example.dcsg1_mobileassignment.utils.openLocationInMaps
+import com.example.dcsg1_mobileassignment.viewmodel.AuthViewModel
 import kotlinx.coroutines.launch
 
 @Composable
 fun JobDetailScreen(
     navController: NavController,
-    jobId: String
+    jobId: String,
+    authViewModel: AuthViewModel
 ) {
     val job = CommunityPostStore.jobs.firstOrNull { it.id == jobId }
 
@@ -65,6 +74,7 @@ fun JobDetailScreen(
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     var isDeleting by remember { mutableStateOf(false) }
+    var showApplyDialog by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -132,86 +142,126 @@ fun JobDetailScreen(
             Spacer(Modifier.weight(1f))
 
             if (job.mine) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
+                Column {
                     Button(
                         onClick = {
-                            navController.navigate("editPost/Job/${job.id}")
+                            navController.navigate("jobApplicants/${job.id}")
                         },
                         modifier = Modifier
-                            .weight(1f)
-                            .height(58.dp),
+                            .fillMaxWidth()
+                            .height(52.dp),
                         shape = RoundedCornerShape(10.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = CommunityColors.Green)
                     ) {
                         Text(
-                            text = "Edit Post",
+                            text = "View Applicants",
                             color = Color.White,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold
                         )
                     }
 
-                    Button(
-                        onClick = {
-                            if (!isDeleting) {
-                                isDeleting = true
-                                coroutineScope.launch {
-                                    val result = CommunityPostStore.deleteJobFromSupabase(job.id)
-                                    isDeleting = false
+                    Spacer(Modifier.height(12.dp))
 
-                                    result
-                                        .onSuccess {
-                                            Toast.makeText(context, "Job deleted successfully", Toast.LENGTH_SHORT).show()
-                                            navController.popBackStack()
-                                        }
-                                        .onFailure {
-                                            Toast.makeText(
-                                                context,
-                                                "Delete failed. Please try again.",
-                                                Toast.LENGTH_SHORT
-                                            ).show()
-                                        }
-                                }
-                            }
-                        },
-                        enabled = !isDeleting,
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(58.dp),
-                        shape = RoundedCornerShape(10.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFFE53935),
-                            disabledContainerColor = Color(0xFFE57373)
-                        )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Text(
-                            text = if (isDeleting) "Deleting..." else "Delete Post",
-                            color = Color.White,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold
-                        )
+                        Button(
+                            onClick = {
+                                navController.navigate("editPost/Job/${job.id}")
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(58.dp),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = CommunityColors.Green)
+                        ) {
+                            Text(
+                                text = "Edit Post",
+                                color = Color.White,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        Button(
+                            onClick = {
+                                if (!isDeleting) {
+                                    isDeleting = true
+                                    coroutineScope.launch {
+                                        val result = CommunityPostStore.deleteJobFromSupabase(job.id)
+                                        isDeleting = false
+
+                                        result
+                                            .onSuccess {
+                                                Toast.makeText(context, "Job deleted successfully", Toast.LENGTH_SHORT).show()
+                                                navController.popBackStack()
+                                            }
+                                            .onFailure {
+                                                Toast.makeText(
+                                                    context,
+                                                    "Delete failed. Please try again.",
+                                                    Toast.LENGTH_SHORT
+                                                ).show()
+                                            }
+                                    }
+                                }
+                            },
+                            enabled = !isDeleting,
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(58.dp),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFFE53935),
+                                disabledContainerColor = Color(0xFFE57373)
+                            )
+                        ) {
+                            Text(
+                                text = if (isDeleting) "Deleting..." else "Delete Post",
+                                color = Color.White,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
                 }
             } else {
                 val alreadyApplied = CommunityPostStore.appliedJobIds.contains(job.id)
+                val applicationStatus = CommunityPostStore.appliedJobStatuses[job.id]
+
+                if (alreadyApplied && applicationStatus != null && applicationStatus != "pending") {
+                    Text(
+                        text = when (applicationStatus) {
+                            "accepted" -> "Your application was accepted!"
+                            "rejected" -> "Your application was rejected."
+                            else -> "Application status: $applicationStatus"
+                        },
+                        color = when (applicationStatus) {
+                            "accepted" -> CommunityColors.Green
+                            "rejected" -> Color(0xFFE53935)
+                            else -> CommunityColors.TextMuted
+                        },
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 12.dp)
+                    )
+                }
 
                 Button(
                     onClick = {
-                        coroutineScope.launch {
-                            try {
-                                if (alreadyApplied) {
+                        if (alreadyApplied) {
+                            coroutineScope.launch {
+                                try {
                                     CommunityPostStore.unapplyFromJob(job.id)
                                     Toast.makeText(context, "Application withdrawn", Toast.LENGTH_SHORT).show()
-                                } else {
-                                    CommunityPostStore.applyToJob(job.id)
-                                    Toast.makeText(context, "Applied successfully", Toast.LENGTH_SHORT).show()
+                                } catch (e: Exception) {
+                                    Toast.makeText(context, "Something went wrong. Please try again.", Toast.LENGTH_SHORT).show()
                                 }
-                            } catch (e: Exception) {
-                                Toast.makeText(context, "Something went wrong. Please try again.", Toast.LENGTH_SHORT).show()
                             }
+                        } else {
+                            showApplyDialog = true
                         }
                     },
                     modifier = Modifier
@@ -232,6 +282,100 @@ fun JobDetailScreen(
             }
         }
     }
+
+    if (showApplyDialog) {
+        ApplyToJobDialog(
+            initialName = authViewModel.currentUser?.fullName.orEmpty(),
+            initialPhone = authViewModel.currentUser?.phone.orEmpty(),
+            onDismiss = { showApplyDialog = false },
+            onSubmit = { name, phone ->
+                showApplyDialog = false
+                coroutineScope.launch {
+                    try {
+                        CommunityPostStore.applyToJob(job.id, name, phone)
+                        Toast.makeText(context, "Applied successfully", Toast.LENGTH_SHORT).show()
+                    } catch (e: Exception) {
+                        Toast.makeText(context, "Something went wrong. Please try again.", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        )
+    }
+}
+
+// Person 2 fills in their personal details here before applying, so Person 1
+// (the job poster) can see who they are once they choose to accept.
+@Composable
+private fun ApplyToJobDialog(
+    initialName: String,
+    initialPhone: String,
+    onDismiss: () -> Unit,
+    onSubmit: (name: String, phone: String) -> Unit
+) {
+    var name by remember { mutableStateOf(initialName) }
+    var phone by remember { mutableStateOf(initialPhone) }
+    var error by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text("Your Details", fontWeight = FontWeight.Bold, color = CommunityColors.TextPrimary)
+        },
+        text = {
+            Column {
+                Text(
+                    text = "The job poster will see these details if they accept your application.",
+                    color = CommunityColors.TextMuted,
+                    fontSize = 12.sp
+                )
+                Spacer(Modifier.height(16.dp))
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it; error = "" },
+                    label = { Text("Full Name") },
+                    singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = Color.White,
+                        unfocusedContainerColor = Color.White
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(Modifier.height(10.dp))
+                OutlinedTextField(
+                    value = phone,
+                    onValueChange = { phone = it; error = "" },
+                    label = { Text("Phone Number") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = Color.White,
+                        unfocusedContainerColor = Color.White
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                if (error.isNotEmpty()) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(error, color = Color(0xFFE53935), fontSize = 12.sp)
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                when {
+                    !Validation.isNameValid(name) -> error = "Please enter your name."
+                    !Validation.isPhoneValid(phone) -> error = "Please enter a valid Malaysian phone number."
+                    else -> onSubmit(name.trim(), phone.trim())
+                }
+            }) {
+                Text("Submit Application", color = CommunityColors.Green, fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel", color = CommunityColors.TextMuted)
+            }
+        }
+    )
 }
 
 @Composable

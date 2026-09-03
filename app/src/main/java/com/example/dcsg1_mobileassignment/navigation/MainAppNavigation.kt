@@ -24,6 +24,7 @@ import com.example.dcsg1_mobileassignment.screens.DonationListScreen
 import com.example.dcsg1_mobileassignment.screens.EditProfileScreen
 import com.example.dcsg1_mobileassignment.screens.ForgotPasswordScreen
 import com.example.dcsg1_mobileassignment.screens.JobDetailScreen
+import com.example.dcsg1_mobileassignment.screens.JobApplicantsScreen
 import com.example.dcsg1_mobileassignment.screens.JobFilterScreen
 import com.example.dcsg1_mobileassignment.screens.JobListScreen
 import com.example.dcsg1_mobileassignment.screens.LoginScreen
@@ -113,6 +114,17 @@ fun AppNavigation() {
             arguments = listOf(navArgument("jobId") { type = NavType.StringType })
         ) { backStackEntry ->
             JobDetailScreen(
+                navController = navController,
+                jobId = backStackEntry.arguments?.getString("jobId").orEmpty(),
+                authViewModel = authViewModel
+            )
+        }
+
+        composable(
+            route = "jobApplicants/{jobId}",
+            arguments = listOf(navArgument("jobId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            JobApplicantsScreen(
                 navController = navController,
                 jobId = backStackEntry.arguments?.getString("jobId").orEmpty()
             )
