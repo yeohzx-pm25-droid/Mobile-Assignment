@@ -16,9 +16,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.Campaign
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.VolunteerActivism
 import androidx.compose.material.icons.filled.Work
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -160,19 +163,19 @@ fun ProfileScreen(
                         border = androidx.compose.foundation.BorderStroke(1.dp, CommunityColors.FieldBorder)
                     ) {
                         Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                            ActivityRow("My Job Applications", jobApplicationsCount.toString()) {
+                            ActivityRow("My Job Applications", jobApplicationsCount.toString(), Icons.Filled.Work) {
                                 navController.navigate("activityList/appliedJobs")
                             }
                             HorizontalDivider(color = CommunityColors.FieldBorder)
-                            ActivityRow("My Posted Jobs", postedJobsCount.toString()) {
+                            ActivityRow("My Posted Jobs", postedJobsCount.toString(), Icons.Filled.Campaign) {
                                 navController.navigate("activityList/myJobs")
                             }
                             HorizontalDivider(color = CommunityColors.FieldBorder)
-                            ActivityRow("My Donated Items", donatedItemsCount.toString()) {
+                            ActivityRow("My Donated Items", donatedItemsCount.toString(), Icons.Filled.VolunteerActivism) {
                                 navController.navigate("activityList/myDonations")
                             }
                             HorizontalDivider(color = CommunityColors.FieldBorder)
-                            ActivityRow("My Reserved Items", reservedItemsCount.toString()) {
+                            ActivityRow("My Reserved Items", reservedItemsCount.toString(), Icons.Filled.Bookmark) {
                                 navController.navigate("activityList/reservedDonations")
                             }
                         }
@@ -208,6 +211,7 @@ fun ProfileScreen(
 private fun ActivityRow(
     label: String,
     value: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
     onClick: () -> Unit
 ) {
     Row(
@@ -217,7 +221,7 @@ private fun ActivityRow(
             .clickable { onClick() },
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(Icons.Filled.Work, contentDescription = null, tint = CommunityColors.Green, modifier = Modifier.size(21.dp))
+        Icon(icon, contentDescription = null, tint = CommunityColors.Green, modifier = Modifier.size(21.dp))
         Spacer(Modifier.size(14.dp))
         Text(
             text = label,

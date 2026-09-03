@@ -21,7 +21,7 @@ object Validation {
         if (password.length < 8) return false
         val hasUpperCase = password.any { it.isUpperCase() }
         val hasDigit = password.any { it.isDigit() }
-        val hasSpecialChar = password.any { "@#$%".contains(it) }
+        val hasSpecialChar = password.any { !it.isLetterOrDigit() }
 
         return hasUpperCase && hasDigit && hasSpecialChar
 
@@ -53,7 +53,6 @@ object Validation {
         return text.trim().isNotEmpty()
 
     }
-
 }
 
 fun Context.openLocationInMaps(location: String) {

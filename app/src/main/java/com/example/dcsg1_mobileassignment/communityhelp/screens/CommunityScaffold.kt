@@ -15,6 +15,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.Column
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.VolunteerActivism
+import androidx.compose.material.icons.filled.Work
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -22,6 +29,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -75,17 +83,17 @@ private fun CommunityBottomBar(
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                BottomText("Home", selected == BottomTab.Home) {
+                BottomItem("Home", Icons.Filled.Home, selected == BottomTab.Home) {
                     navController.navigateSingleTop("home")
                 }
-                BottomText("Jobs", selected == BottomTab.Jobs) {
+                BottomItem("Jobs", Icons.Filled.Work, selected == BottomTab.Jobs) {
                     navController.navigateSingleTop("jobs")
                 }
                 Spacer(Modifier.width(56.dp))
-                BottomText("Donation", selected == BottomTab.Donation) {
+                BottomItem("Donation", Icons.Filled.VolunteerActivism, selected == BottomTab.Donation) {
                     navController.navigateSingleTop("donation")
                 }
-                BottomText("Profile", selected == BottomTab.Profile) {
+                BottomItem("Profile", Icons.Filled.AccountCircle, selected == BottomTab.Profile) {
                     navController.navigateSingleTop("userProfile")
                 }
             }
@@ -122,8 +130,9 @@ private fun CommunityBottomBar(
 }
 
 @Composable
-private fun BottomText(
+private fun BottomItem(
     label: String,
+    icon: ImageVector,
     selected: Boolean,
     onClick: () -> Unit
 ) {
@@ -134,12 +143,24 @@ private fun BottomText(
             .clickable { onClick() },
         contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = label,
-            color = if (selected) CommunityColors.Green else CommunityColors.TextMuted,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Bold
-        )
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = if (selected) CommunityColors.Green else CommunityColors.TextMuted,
+                modifier = Modifier.size(22.dp)
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = label,
+                color = if (selected) CommunityColors.Green else CommunityColors.TextMuted,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
     }
 }
 

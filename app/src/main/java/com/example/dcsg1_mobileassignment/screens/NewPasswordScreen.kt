@@ -145,7 +145,7 @@ fun NewPasswordScreen(
                     scope.launch {
                         when {
                             !Validation.isPasswordValid(newPassword) ->
-                                message = "Password must be at least 8 characters, include uppercase, number, and special character (@#$%)."
+                                message = "Password must be at least 8 characters, include uppercase, number, and special character."
                             newPassword != confirmPassword ->
                                 message = "Passwords do not match."
                             else -> {

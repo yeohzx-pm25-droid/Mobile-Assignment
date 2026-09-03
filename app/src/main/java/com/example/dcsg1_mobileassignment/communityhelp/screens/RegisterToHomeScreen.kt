@@ -159,7 +159,7 @@ fun RegisterToHomeScreen(
                     }
 
                     !Validation.isPasswordValid(password) -> {
-                        message = "Password must be at least 8 characters, include uppercase, number, and special character (@#$%)."
+                        message = "Password must be at least 8 characters, include uppercase, number, and special character."
                         passwordError = true
                         showErrorDialog = true
                     }
