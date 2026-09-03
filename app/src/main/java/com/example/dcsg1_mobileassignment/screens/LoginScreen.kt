@@ -19,7 +19,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Spa
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
@@ -35,7 +34,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -64,8 +62,6 @@ fun LoginScreen(
     var passwordVisible by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
-    val currentUser = authViewModel.currentUser
-
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -75,7 +71,7 @@ fun LoginScreen(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Image(
-            painter = painterResource(id = R.drawable.screenshot_2026_08_27_221124),
+            painter = painterResource(id = R.drawable.fingrow_fulllogo),
             contentDescription = "FinGrow Logo",
             contentScale = ContentScale.Crop,
             modifier = Modifier
