@@ -199,12 +199,8 @@ fun DonationDetailScreen(
                                             Toast.makeText(context, "Donation deleted successfully", Toast.LENGTH_SHORT).show()
                                             navController.popBackStack()
                                         }
-                                        .onFailure {
-                                            Toast.makeText(
-                                                context,
-                                                "Delete failed. Please try again.",
-                                                Toast.LENGTH_SHORT
-                                            ).show()
+                                        .onFailure { error ->
+                                            Toast.makeText(context, error.message ?: "Delete failed. Please try again.", Toast.LENGTH_SHORT).show()
                                         }
                                 }
                             }
@@ -288,8 +284,8 @@ fun DonationDetailScreen(
                                         .onSuccess {
                                             Toast.makeText(context, "Reservation cancelled", Toast.LENGTH_SHORT).show()
                                         }
-                                        .onFailure {
-                                            Toast.makeText(context, "Something went wrong. Please try again.", Toast.LENGTH_SHORT).show()
+                                        .onFailure { error ->
+                                            Toast.makeText(context, error.message ?: "Delete failed. Please try again.", Toast.LENGTH_SHORT).show()
                                         }
                                 }
                             },
@@ -385,8 +381,8 @@ fun DonationDetailScreen(
                                 Toast.makeText(context, "This item is fully reserved", Toast.LENGTH_SHORT).show()
                             }
                         }
-                        .onFailure {
-                            Toast.makeText(context, "Something went wrong. Please try again.", Toast.LENGTH_SHORT).show()
+                        .onFailure { error ->
+                            Toast.makeText(context, error.message ?: "Delete failed. Please try again.", Toast.LENGTH_SHORT).show()
                         }
                 }
             }

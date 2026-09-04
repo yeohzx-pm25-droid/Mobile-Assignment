@@ -307,4 +307,4 @@ private fun StatusTag(fullyReserved: Boolean, remaining: Int, totalQuantity: Int
             )
         }
     }
-}
+}   

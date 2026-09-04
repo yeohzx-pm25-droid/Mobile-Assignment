@@ -26,13 +26,9 @@ import java.time.Instant
 import java.util.Locale
 
 object CommunityPostStore {
-    val jobs = mutableStateListOf<JobPost>().apply {
-        addAll(CommunityData.sampleJobs)
-    }
+    val jobs = mutableStateListOf<JobPost>()
 
-    val donations = mutableStateListOf<DonationPost>().apply {
-        addAll(CommunityData.sampleDonations)
-    }
+    val donations = mutableStateListOf<DonationPost>()
 
     val appliedJobIds = mutableStateListOf<String>()
     val appliedJobStatuses = mutableStateMapOf<String, String>()
@@ -127,9 +123,7 @@ object CommunityPostStore {
 
     fun resetLocalPosts() {
         jobs.clear()
-        jobs.addAll(CommunityData.sampleJobs)
         donations.clear()
-        donations.addAll(CommunityData.sampleDonations)
         appliedJobIds.clear()
         reservedDonationIds.clear()
         reservedQuantities.clear()
@@ -207,11 +201,9 @@ object CommunityPostStore {
 
             jobs.clear()
             jobs.addAll(loadedJobs)
-            jobs.addAll(CommunityData.sampleJobs)
 
             donations.clear()
             donations.addAll(loadedDonations)
-            donations.addAll(CommunityData.sampleDonations)
 
             appliedJobIds.clear()
             appliedJobIds.addAll(remoteData.myApplications.map { it.jobId })
@@ -331,22 +323,20 @@ object CommunityPostStore {
 
     suspend fun deleteJobFromSupabase(jobId: String): Result<Unit> {
         return runCatching {
-            if (!jobId.isSampleJobId()) {
-                supabase.auth.currentUserOrNull()
-                    ?: error("Please login before deleting a job.")
+            supabase.auth.currentUserOrNull()
+                ?: error("Please login before deleting a job.")
 
-                withContext(Dispatchers.IO) {
-                    supabase.from("jobs").delete {
-                        filter {
-                            eq("id", jobId)
-                        }
+            withContext(Dispatchers.IO) {
+                supabase.from("jobs").delete {
+                    filter {
+                        eq("id", jobId)
                     }
-                    ensureRemoteRowDeleted(
-                        tableName = "jobs",
-                        postId = jobId,
-                        errorMessage = "Delete failed. Please try again."
-                    )
                 }
+                ensureRemoteRowDeleted(
+                    tableName = "jobs",
+                    postId = jobId,
+                    errorMessage = "Delete failed. Please try again."
+                )
             }
 
             deleteJob(jobId)
@@ -357,26 +347,24 @@ object CommunityPostStore {
         return runCatching {
             val imageUrl = donationImageUrls[donationId]
 
-            if (!donationId.isSampleDonationId()) {
-                supabase.auth.currentUserOrNull()
-                    ?: error("Please login before deleting a donation.")
+            supabase.auth.currentUserOrNull()
+                ?: error("Please login before deleting a donation.")
 
-                withContext(Dispatchers.IO) {
-                    supabase.from("donations").delete {
-                        filter {
-                            eq("id", donationId)
-                        }
+            withContext(Dispatchers.IO) {
+                supabase.from("donations").delete {
+                    filter {
+                        eq("id", donationId)
                     }
-                    ensureRemoteRowDeleted(
-                        tableName = "donations",
-                        postId = donationId,
-                        errorMessage = "Delete failed. Please try again."
-                    )
+                }
+                ensureRemoteRowDeleted(
+                    tableName = "donations",
+                    postId = donationId,
+                    errorMessage = "Delete failed. Please try again."
+                )
 
-                    storagePathFromDonationImageUrl(imageUrl)?.let { imagePath ->
-                        runCatching {
-                            supabase.storage.from(DONATION_IMAGE_BUCKET).delete(imagePath)
-                        }
+                storagePathFromDonationImageUrl(imageUrl)?.let { imagePath ->
+                    runCatching {
+                        supabase.storage.from(DONATION_IMAGE_BUCKET).delete(imagePath)
                     }
                 }
             }
@@ -817,14 +805,6 @@ private fun uploadFileNameFor(userId: String, mimeType: String?): String {
         .getExtensionFromMimeType(mimeType)
         ?: "jpg"
     return "$userId/${System.currentTimeMillis()}.$extension"
-}
-
-private fun String.isSampleJobId(): Boolean {
-    return startsWith("job-")
-}
-
-private fun String.isSampleDonationId(): Boolean {
-    return startsWith("donation-")
 }
 
 private fun storagePathFromDonationImageUrl(imageUrl: String?): String? {

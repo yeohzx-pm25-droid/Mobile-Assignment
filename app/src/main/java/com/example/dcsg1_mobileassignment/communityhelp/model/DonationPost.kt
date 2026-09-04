@@ -11,5 +11,6 @@ data class DonationPost(
     val tint: Long = 0xFFEFF5EC,
     val imageRes: Int? = null,
     val quantity: Int = 1,
-    val mine: Boolean = false
+    val mine: Boolean = false,
+    val state: String = ""
 )
