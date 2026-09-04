@@ -199,6 +199,24 @@ private fun ApplicantCard(
                 fontSize = 13.sp
             )
 
+            applicant.applicantAge?.let { age ->
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    text = "Age: $age",
+                    color = CommunityColors.TextMuted,
+                    fontSize = 13.sp
+                )
+            }
+
+            if (applicant.message.isNotBlank()) {
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    text = applicant.message,
+                    color = CommunityColors.TextPrimary,
+                    fontSize = 12.sp
+                )
+            }
+
             if (applicant.status == "pending") {
                 Spacer(Modifier.height(14.dp))
                 Row(

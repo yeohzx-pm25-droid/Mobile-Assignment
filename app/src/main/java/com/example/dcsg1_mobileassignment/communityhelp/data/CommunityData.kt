@@ -4,6 +4,8 @@ import com.example.dcsg1_mobileassignment.R
 import com.example.dcsg1_mobileassignment.communityhelp.model.DonationPost
 import com.example.dcsg1_mobileassignment.communityhelp.model.JobPost
 
+const val JOB_FILTER_ALL = "All"
+
 // Fixed lists and sample records for the community module.
 object CommunityData {
     val jobCategories = listOf(

@@ -37,6 +37,7 @@ object CommunityPostStore {
     val appliedJobIds = mutableStateListOf<String>()
     val appliedJobStatuses = mutableStateMapOf<String, String>()
     val reservedDonationIds = mutableStateListOf<String>()
+    val myReservationStatuses = mutableStateMapOf<String, String>()
 
     private val reservedQuantities = mutableStateMapOf<String, Int>()
     private val myReservedQuantities = mutableStateMapOf<String, Int>()
@@ -220,19 +221,22 @@ object CommunityPostStore {
             reservedQuantities.clear()
             myReservedQuantities.clear()
             reservedDonationIds.clear()
+            myReservationStatuses.clear()
 
             remoteData.reservations
+                .filter { it.status != "rejected" }
                 .groupBy { it.donationId }
                 .forEach { (donationId, rows) ->
                     reservedQuantities[donationId] = rows.sumOf { it.quantity }
                 }
 
             remoteData.reservations
-                .filter { it.reservedBy == currentUserId }
+                .filter { it.reservedBy == currentUserId && it.status != "rejected" }
                 .groupBy { it.donationId }
                 .forEach { (donationId, rows) ->
                     myReservedQuantities[donationId] = rows.sumOf { it.quantity }
                     reservedDonationIds.add(donationId)
+                    myReservationStatuses[donationId] = rows.maxByOrNull { it.createdAt.orEmpty() }?.status ?: "pending"
                 }
 
             lastRemotePostError = null
@@ -381,7 +385,13 @@ object CommunityPostStore {
         }
     }
 
-    suspend fun applyToJob(jobId: String, applicantName: String, applicantPhone: String) {
+    suspend fun applyToJob(
+        jobId: String,
+        applicantName: String,
+        applicantPhone: String,
+        applicantAge: Int,
+        message: String = ""
+    ) {
         val userId = supabase.auth.currentUserOrNull()?.id ?: return
         if (appliedJobIds.contains(jobId)) return
 
@@ -395,7 +405,8 @@ object CommunityPostStore {
                         applicantId = userId,
                         applicantName = applicantName.trim(),
                         applicantPhone = applicantPhone.trim(),
-                        message = "",
+                        applicantAge = applicantAge,
+                        message = message.trim(),
                         status = "pending"
                     )
                 )
@@ -472,6 +483,7 @@ object CommunityPostStore {
         donationId: String,
         reserverName: String,
         reserverPhone: String,
+        reserverAge: Int,
         amount: Int = 1
     ): Result<Int> {
         return runCatching {
@@ -493,13 +505,16 @@ object CommunityPostStore {
                         reservedBy = userId,
                         reserverName = reserverName.trim(),
                         reserverPhone = reserverPhone.trim(),
-                        quantity = actualAmount
+                        reserverAge = reserverAge,
+                        quantity = actualAmount,
+                        status = "pending"
                     )
                 )
             }
 
             reservedQuantities[donationId] = alreadyClaimed + actualAmount
             myReservedQuantities[donationId] = (myReservedQuantities[donationId] ?: 0) + actualAmount
+            myReservationStatuses[donationId] = "pending"
             if (!reservedDonationIds.contains(donationId)) {
                 reservedDonationIds.add(donationId)
             }
@@ -525,6 +540,7 @@ object CommunityPostStore {
                 ((reservedQuantities[donationId] ?: 0) - (myReservedQuantities[donationId] ?: 0)).coerceAtLeast(0)
             myReservedQuantities.remove(donationId)
             reservedDonationIds.remove(donationId)
+            myReservationStatuses.remove(donationId)
         }
     }
 
@@ -538,8 +554,31 @@ object CommunityPostStore {
                     }
                     .decodeList<DonationReservation>()
             }
-            reservedQuantities[donationId] = rows.sumOf { it.quantity }
+            reservedQuantities[donationId] = rows.filter { it.status != "rejected" }.sumOf { it.quantity }
             rows
+        }
+    }
+
+    suspend fun setReservationStatus(reservation: DonationReservation, newStatus: String): Result<Unit> {
+        return runCatching {
+            withContext(Dispatchers.IO) {
+                supabase.from("donation_reservations")
+                    .update(DonationReservationStatusUpdate(status = newStatus)) {
+                        filter { eq("id", reservation.id) }
+                    }
+            }
+
+            if (newStatus == "rejected") {
+                reservedQuantities[reservation.donationId] =
+                    ((reservedQuantities[reservation.donationId] ?: 0) - reservation.quantity).coerceAtLeast(0)
+                if (reservation.reservedBy == supabase.auth.currentUserOrNull()?.id) {
+                    myReservedQuantities.remove(reservation.donationId)
+                    reservedDonationIds.remove(reservation.donationId)
+                    myReservationStatuses[reservation.donationId] = "rejected"
+                }
+            } else if (reservation.reservedBy == supabase.auth.currentUserOrNull()?.id) {
+                myReservationStatuses[reservation.donationId] = newStatus
+            }
         }
     }
 
@@ -602,6 +641,7 @@ private data class JobApplicationInsert(
     @SerialName("applicant_id") val applicantId: String,
     @SerialName("applicant_name") val applicantName: String,
     @SerialName("applicant_phone") val applicantPhone: String,
+    @SerialName("applicant_age") val applicantAge: Int,
     val message: String = "",
     val status: String = "pending"
 )
@@ -624,6 +664,8 @@ data class JobApplicant(
     @SerialName("applicant_id") val applicantId: String,
     @SerialName("applicant_name") val applicantName: String,
     @SerialName("applicant_phone") val applicantPhone: String,
+    @SerialName("applicant_age") val applicantAge: Int? = null,
+    val message: String = "",
     val status: String,
     @SerialName("created_at") val createdAt: String? = null
 )
@@ -635,8 +677,9 @@ data class DonationReservation(
     @SerialName("reserved_by") val reservedBy: String,
     @SerialName("reserver_name") val reserverName: String? = null,
     @SerialName("reserver_phone") val reserverPhone: String? = null,
+    @SerialName("reserver_age") val reserverAge: Int? = null,
     val quantity: Int = 1,
-    val status: String = "confirmed",
+    val status: String = "pending",
     @SerialName("created_at") val createdAt: String? = null
 )
 
@@ -646,8 +689,14 @@ private data class DonationReservationInsert(
     @SerialName("reserved_by") val reservedBy: String,
     @SerialName("reserver_name") val reserverName: String,
     @SerialName("reserver_phone") val reserverPhone: String,
+    @SerialName("reserver_age") val reserverAge: Int,
     val quantity: Int,
-    val status: String = "confirmed"
+    val status: String = "pending"
+)
+
+@Serializable
+private data class DonationReservationStatusUpdate(
+    val status: String
 )
 
 @Serializable

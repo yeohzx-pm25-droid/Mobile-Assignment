@@ -288,11 +288,11 @@ fun JobDetailScreen(
             initialName = authViewModel.currentUser?.fullName.orEmpty(),
             initialPhone = authViewModel.currentUser?.phone.orEmpty(),
             onDismiss = { showApplyDialog = false },
-            onSubmit = { name, phone ->
+            onSubmit = { name, phone, age, message ->
                 showApplyDialog = false
                 coroutineScope.launch {
                     try {
-                        CommunityPostStore.applyToJob(job.id, name, phone)
+                        CommunityPostStore.applyToJob(job.id, name, phone, age, message)
                         Toast.makeText(context, "Applied successfully", Toast.LENGTH_SHORT).show()
                     } catch (e: Exception) {
                         Toast.makeText(context, "Something went wrong. Please try again.", Toast.LENGTH_SHORT).show()
@@ -310,10 +310,12 @@ private fun ApplyToJobDialog(
     initialName: String,
     initialPhone: String,
     onDismiss: () -> Unit,
-    onSubmit: (name: String, phone: String) -> Unit
+    onSubmit: (name: String, phone: String, age: Int, message: String) -> Unit
 ) {
     var name by remember { mutableStateOf(initialName) }
     var phone by remember { mutableStateOf(initialPhone) }
+    var age by remember { mutableStateOf("") }
+    var message by remember { mutableStateOf("") }
     var error by remember { mutableStateOf("") }
 
     AlertDialog(
@@ -353,6 +355,31 @@ private fun ApplyToJobDialog(
                     ),
                     modifier = Modifier.fillMaxWidth()
                 )
+                Spacer(Modifier.height(10.dp))
+                OutlinedTextField(
+                    value = age,
+                    onValueChange = { age = it.filter { ch -> ch.isDigit() }; error = "" },
+                    label = { Text("Age") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = Color.White,
+                        unfocusedContainerColor = Color.White
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(Modifier.height(10.dp))
+                OutlinedTextField(
+                    value = message,
+                    onValueChange = { message = it },
+                    label = { Text("Message to poster (optional)") },
+                    placeholder = { Text("E.g. relevant experience, availability") },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = Color.White,
+                        unfocusedContainerColor = Color.White
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
                 if (error.isNotEmpty()) {
                     Spacer(Modifier.height(8.dp))
                     Text(error, color = Color(0xFFE53935), fontSize = 12.sp)
@@ -364,7 +391,9 @@ private fun ApplyToJobDialog(
                 when {
                     !Validation.isNameValid(name) -> error = "Please enter your name."
                     !Validation.isPhoneValid(phone) -> error = "Please enter a valid Malaysian phone number."
-                    else -> onSubmit(name.trim(), phone.trim())
+                    age.trim().toIntOrNull() == null -> error = "Please enter your age."
+                    !Validation.isAgeValid(age) -> error = "You must be 18 or older to apply."
+                    else -> onSubmit(name.trim(), phone.trim(), age.trim().toInt(), message.trim())
                 }
             }) {
                 Text("Submit Application", color = CommunityColors.Green, fontWeight = FontWeight.Bold)

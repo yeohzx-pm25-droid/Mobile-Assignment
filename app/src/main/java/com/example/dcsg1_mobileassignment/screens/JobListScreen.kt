@@ -215,7 +215,7 @@ private fun EmptyJobsMessage() {
 }
 
 @Composable
-private fun JobListCard(
+fun JobListCard(
     job: JobPost,
     onClick: () -> Unit
 ) {

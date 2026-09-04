@@ -26,7 +26,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.dcsg1_mobileassignment.communityhelp.screens.CommunityColors
-import com.example.dcsg1_mobileassignment.communityhelp.screens.JobCard
 
 @Composable
 fun UserActivityListScreen(
@@ -84,7 +83,7 @@ fun UserActivityListScreen(
                         item { EmptyState("No job applications yet.") }
                     } else {
                         items(appliedJobs) { job ->
-                            JobCard(job) {
+                            JobListCard(job) {
                                 navController.navigate("jobDetail/${job.id}")
                             }
                         }
@@ -96,7 +95,7 @@ fun UserActivityListScreen(
                         item { EmptyState("You haven't posted any jobs.") }
                     } else {
                         items(myJobs) { job ->
-                            JobCard(job) {
+                            JobListCard(job) {
                                 navController.navigate("jobDetail/${job.id}")
                             }
                         }

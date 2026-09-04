@@ -48,6 +48,14 @@ object Validation {
     }
 
 
+    fun isAgeValid(age: String): Boolean {
+
+        val parsed = age.trim().toIntOrNull() ?: return false
+        return parsed in 18..100
+
+    }
+
+
     fun isNotEmpty(text: String): Boolean {
 
         return text.trim().isNotEmpty()

@@ -7,6 +7,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,12 +26,16 @@ import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -47,12 +52,14 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.dcsg1_mobileassignment.communityhelp.model.DonationPost
 import com.example.dcsg1_mobileassignment.communityhelp.screens.CommunityColors
+import com.example.dcsg1_mobileassignment.utils.Validation
 import com.example.dcsg1_mobileassignment.utils.openLocationInMaps
 import com.example.dcsg1_mobileassignment.viewmodel.AuthViewModel
 import kotlinx.coroutines.launch
@@ -78,6 +85,7 @@ fun DonationDetailScreen(
     val fullyReserved = CommunityPostStore.isFullyReserved(donation)
     var pickedQuantity by remember(donation.id) { mutableIntStateOf(1) }
     var isDeleting by remember { mutableStateOf(false) }
+    var showReserveDialog by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -257,10 +265,20 @@ fun DonationDetailScreen(
             } else {
                 if (reserved) {
                     Column {
+                        val myStatus = CommunityPostStore.myReservationStatuses[donation.id]
                         Text(
-                            text = "You reserved $myReservedQuantity of this item.",
-                            color = CommunityColors.TextMuted,
-                            fontSize = 12.sp
+                            text = when (myStatus) {
+                                "accepted" -> "Your reservation was accepted!"
+                                "rejected" -> "Your reservation was rejected."
+                                else -> "You reserved $myReservedQuantity of this item. Waiting for the donor to accept."
+                            },
+                            color = when (myStatus) {
+                                "accepted" -> CommunityColors.Green
+                                "rejected" -> Color(0xFFE53935)
+                                else -> CommunityColors.TextMuted
+                            },
+                            fontSize = 12.sp,
+                            fontWeight = if (myStatus == "accepted" || myStatus == "rejected") FontWeight.Bold else FontWeight.Normal
                         )
                         Spacer(Modifier.height(10.dp))
                         Button(
@@ -321,28 +339,7 @@ fun DonationDetailScreen(
                         }
 
                         Button(
-                            onClick = {
-                                val amount = if (donation.quantity > 1) pickedQuantity else 1
-                                coroutineScope.launch {
-                                    CommunityPostStore.reserveDonationToSupabase(
-                                        donationId = donation.id,
-                                        reserverName = authViewModel.currentUser?.fullName.orEmpty(),
-                                        reserverPhone = authViewModel.currentUser?.phone.orEmpty(),
-                                        amount = amount
-                                    )
-                                        .onSuccess { actuallyReserved ->
-                                            if (actuallyReserved > 0) {
-                                                Toast.makeText(context, "Reserved $actuallyReserved item(s)", Toast.LENGTH_SHORT).show()
-                                                pickedQuantity = 1
-                                            } else {
-                                                Toast.makeText(context, "This item is fully reserved", Toast.LENGTH_SHORT).show()
-                                            }
-                                        }
-                                        .onFailure {
-                                            Toast.makeText(context, "Something went wrong. Please try again.", Toast.LENGTH_SHORT).show()
-                                        }
-                                }
-                            },
+                            onClick = { showReserveDialog = true },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(58.dp),
@@ -363,6 +360,131 @@ fun DonationDetailScreen(
             Spacer(Modifier.height(24.dp))
         }
     }
+
+    if (showReserveDialog) {
+        ReserveDonationDialog(
+            initialName = authViewModel.currentUser?.fullName.orEmpty(),
+            initialPhone = authViewModel.currentUser?.phone.orEmpty(),
+            onDismiss = { showReserveDialog = false },
+            onSubmit = { name, phone, age ->
+                showReserveDialog = false
+                val amount = if (donation.quantity > 1) pickedQuantity else 1
+                coroutineScope.launch {
+                    CommunityPostStore.reserveDonationToSupabase(
+                        donationId = donation.id,
+                        reserverName = name,
+                        reserverPhone = phone,
+                        reserverAge = age,
+                        amount = amount
+                    )
+                        .onSuccess { actuallyReserved ->
+                            if (actuallyReserved > 0) {
+                                Toast.makeText(context, "Reserved $actuallyReserved item(s)", Toast.LENGTH_SHORT).show()
+                                pickedQuantity = 1
+                            } else {
+                                Toast.makeText(context, "This item is fully reserved", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                        .onFailure {
+                            Toast.makeText(context, "Something went wrong. Please try again.", Toast.LENGTH_SHORT).show()
+                        }
+                }
+            }
+        )
+    }
+}
+
+@Composable
+private fun ReserveDonationDialog(
+    initialName: String,
+    initialPhone: String,
+    onDismiss: () -> Unit,
+    onSubmit: (name: String, phone: String, age: Int) -> Unit
+) {
+    var name by remember { mutableStateOf(initialName) }
+    var phone by remember { mutableStateOf(initialPhone) }
+    var age by remember { mutableStateOf("") }
+    var error by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text("Your Details", fontWeight = FontWeight.Bold, color = CommunityColors.TextPrimary)
+        },
+        text = {
+            Column {
+                Text(
+                    text = "The donor will see these details if they accept your reservation.",
+                    color = CommunityColors.TextMuted,
+                    fontSize = 12.sp
+                )
+                Spacer(Modifier.height(16.dp))
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it; error = "" },
+                    label = { Text("Full Name") },
+                    singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = Color.White,
+                        unfocusedContainerColor = Color.White
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(Modifier.height(10.dp))
+                OutlinedTextField(
+                    value = phone,
+                    onValueChange = { phone = it; error = "" },
+                    label = { Text("Phone Number") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Phone
+                    ),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = Color.White,
+                        unfocusedContainerColor = Color.White
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(Modifier.height(10.dp))
+                OutlinedTextField(
+                    value = age,
+                    onValueChange = { age = it.filter { ch -> ch.isDigit() }; error = "" },
+                    label = { Text("Age") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Number
+                    ),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = Color.White,
+                        unfocusedContainerColor = Color.White
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                if (error.isNotEmpty()) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(error, color = Color(0xFFE53935), fontSize = 12.sp)
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                when {
+                    !Validation.isNameValid(name) -> error = "Please enter your name."
+                    !Validation.isPhoneValid(phone) -> error = "Please enter a valid Malaysian phone number."
+                    age.trim().toIntOrNull() == null -> error = "Please enter your age."
+                    !Validation.isAgeValid(age) -> error = "You must be 18 or older to reserve an item."
+                    else -> onSubmit(name.trim(), phone.trim(), age.trim().toInt())
+                }
+            }) {
+                Text("Submit Reservation", color = CommunityColors.Green, fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel", color = CommunityColors.TextMuted)
+            }
+        }
+    )
 }
 
 @Composable
