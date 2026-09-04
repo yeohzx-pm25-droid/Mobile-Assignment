@@ -40,14 +40,10 @@ class MainActivity : ComponentActivity() {
 
         setIntent(intent)
 
-        // Handle OAuth callback when app is already running
+        // Handle Auth callback when app is already running
         handleAuthDeepLink(intent)
     }
 
-    // The "reset password" email link comes back as a deep link containing
-    // "type=recovery". We need to flag that BEFORE handleDeeplinks()
-    // establishes the session, so AuthViewModel knows to route the user to
-    // the "set new password" screen instead of logging them straight in.
     private fun handleAuthDeepLink(intent: Intent) {
         val uri = intent.data
         if (uri != null && uri.toString().contains("type=recovery")) {

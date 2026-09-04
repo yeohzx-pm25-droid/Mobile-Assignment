@@ -43,8 +43,6 @@ import androidx.navigation.NavController
 import com.example.dcsg1_mobileassignment.communityhelp.screens.CommunityColors
 import kotlinx.coroutines.launch
 
-// Person 1's (the donor's) view of everyone who reserved their donation item,
-// where they choose to accept or reject each reservation.
 @Composable
 fun DonationReserversScreen(
     navController: NavController,

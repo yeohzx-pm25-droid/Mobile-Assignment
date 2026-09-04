@@ -43,7 +43,6 @@ object PostValidator {
     }
 }
 
-// Uses Android Geocoder to reject fake typed places before posting.
 object LocationValidator {
 
     suspend fun isRealMalaysiaLocation(context: Context, location: String): Boolean {

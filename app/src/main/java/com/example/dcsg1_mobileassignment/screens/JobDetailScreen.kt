@@ -303,8 +303,6 @@ fun JobDetailScreen(
     }
 }
 
-// Person 2 fills in their personal details here before applying, so Person 1
-// (the job poster) can see who they are once they choose to accept.
 @Composable
 private fun ApplyToJobDialog(
     initialName: String,

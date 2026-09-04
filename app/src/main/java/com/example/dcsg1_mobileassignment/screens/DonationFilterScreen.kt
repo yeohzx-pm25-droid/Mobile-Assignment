@@ -48,7 +48,6 @@ import com.example.dcsg1_mobileassignment.communityhelp.screens.navigateSingleTo
 
 @Composable
 fun DonationFilterScreen(navController: NavController) {
-    // Local draft state so changes only apply once "Apply Filter" is tapped.
     var category by remember { mutableStateOf(CommunityPostStore.donationCategoryFilter) }
     var state by remember { mutableStateOf(CommunityPostStore.donationStateFilter) }
 

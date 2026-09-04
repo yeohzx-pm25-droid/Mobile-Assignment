@@ -48,7 +48,6 @@ import com.example.dcsg1_mobileassignment.communityhelp.screens.navigateSingleTo
 
 @Composable
 fun JobFilterScreen(navController: NavController) {
-    // Local draft state so changes only apply once "Apply Filter" is tapped.
     var jobType by remember { mutableStateOf(CommunityPostStore.jobTypeFilter) }
     var state by remember { mutableStateOf(CommunityPostStore.jobStateFilter) }
     var salaryUnit by remember { mutableStateOf(CommunityPostStore.jobSalaryUnitFilter) }

@@ -45,8 +45,6 @@ import com.example.dcsg1_mobileassignment.utils.Validation
 import com.example.dcsg1_mobileassignment.viewmodel.AuthViewModel
 import kotlinx.coroutines.launch
 
-// Shown automatically when the user taps the "reset password" link in
-// their email, once AuthViewModel confirms a valid recovery session.
 @Composable
 fun NewPasswordScreen(
     navController: NavController,

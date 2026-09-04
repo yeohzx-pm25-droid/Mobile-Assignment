@@ -44,7 +44,6 @@ import com.example.dcsg1_mobileassignment.communityhelp.screens.CommunityColors
 import com.example.dcsg1_mobileassignment.communityhelp.screens.CommunityScaffold
 import com.example.dcsg1_mobileassignment.communityhelp.screens.navigateSingleTop
 
-// Quick-access chips shown above the job list, mirroring the mockup.
 private val quickJobTypes = listOf(JOB_FILTER_ALL, "Part-time", "Full-time", "One-Time")
 
 @Composable

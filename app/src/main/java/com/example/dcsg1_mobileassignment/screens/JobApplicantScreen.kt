@@ -41,8 +41,6 @@ import androidx.navigation.NavController
 import com.example.dcsg1_mobileassignment.communityhelp.screens.CommunityColors
 import kotlinx.coroutines.launch
 
-// Person 1's view of everyone who applied to their job post, where they
-// choose to accept or reject each applicant.
 @Composable
 fun JobApplicantsScreen(
     navController: NavController,
