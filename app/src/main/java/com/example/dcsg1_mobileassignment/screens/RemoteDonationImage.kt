@@ -4,17 +4,20 @@ import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -29,8 +32,13 @@ fun RemoteDonationImage(
     fallbackTint: Long,
     modifier: Modifier = Modifier,
     imageRes: Int? = null,
-    cornerRadius: Dp = 10.dp
+    cornerRadius: Dp = 10.dp,
+    contentScale: ContentScale = ContentScale.Crop,
+    matchImageAspectRatio: Boolean = false,
+    fallbackAspectRatio: Float = 4f / 3f
 ) {
+    val context = LocalContext.current
+
     val imageBitmap by produceState<ImageBitmap?>(initialValue = null, imageUrl) {
         value = null
 
@@ -45,22 +53,38 @@ fun RemoteDonationImage(
         }
     }
 
+    val localResBitmap = remember(imageRes) {
+        imageRes?.let { id ->
+            runCatching { BitmapFactory.decodeResource(context.resources, id) }.getOrNull()
+        }
+    }
+
     val shape = RoundedCornerShape(cornerRadius)
+    val bitmap = imageBitmap
+
+    val sizingModifier = if (matchImageAspectRatio) {
+        val ratio = when {
+            bitmap != null -> bitmap.width.toFloat() / bitmap.height.toFloat()
+            localResBitmap != null -> localResBitmap.width.toFloat() / localResBitmap.height.toFloat()
+            else -> fallbackAspectRatio
+        }
+        modifier.aspectRatio(ratio)
+    } else {
+        modifier
+    }
 
     Box(
-        modifier = modifier
+        modifier = sizingModifier
             .clip(shape)
             .background(Color(fallbackTint))
     ) {
-        val bitmap = imageBitmap
-
         when {
             bitmap != null -> {
                 // Display the image downloaded from the URL.
                 Image(
                     bitmap = bitmap,
                     contentDescription = "Donation image",
-                    contentScale = ContentScale.Crop,
+                    contentScale = contentScale,
                     modifier = Modifier.fillMaxSize()
                 )
             }
@@ -70,7 +94,7 @@ fun RemoteDonationImage(
                 Image(
                     painter = painterResource(id = imageRes),
                     contentDescription = "Donation image",
-                    contentScale = ContentScale.Crop,
+                    contentScale = contentScale,
                     modifier = Modifier.fillMaxSize()
                 )
             }

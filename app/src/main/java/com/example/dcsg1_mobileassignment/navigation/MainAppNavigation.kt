@@ -13,14 +13,14 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.example.dcsg1_mobileassignment.communityhelp.model.BottomTab
 import com.example.dcsg1_mobileassignment.communityhelp.model.PostType
-import com.example.dcsg1_mobileassignment.communityhelp.screens.BlankCommunityScreen
 import com.example.dcsg1_mobileassignment.screens.CreatePostScreen
 import com.example.dcsg1_mobileassignment.screens.CommunityPostStore
 import com.example.dcsg1_mobileassignment.screens.CommunityHomeScreenWithSupabase
 import com.example.dcsg1_mobileassignment.screens.DonationDetailScreen
+import com.example.dcsg1_mobileassignment.screens.DonationFilterScreen
 import com.example.dcsg1_mobileassignment.screens.DonationListScreen
+import com.example.dcsg1_mobileassignment.screens.DonationReserversScreen
 import com.example.dcsg1_mobileassignment.screens.EditProfileScreen
 import com.example.dcsg1_mobileassignment.screens.ForgotPasswordScreen
 import com.example.dcsg1_mobileassignment.screens.JobDetailScreen
@@ -48,9 +48,6 @@ fun AppNavigation() {
         }
     }
 
-    // Once the user taps the "reset password" email link, AuthViewModel
-    // sets isPasswordRecovery = true. Jump straight to the "set new
-    // password" screen regardless of where navigation currently is.
     LaunchedEffect(authViewModel.isPasswordRecovery) {
         if (authViewModel.isPasswordRecovery) {
             navController.navigate("newPassword") {
@@ -59,9 +56,6 @@ fun AppNavigation() {
         }
     }
 
-    // While Supabase checks for a saved session, show a loading state
-    // instead of the login screen so a previously logged-in user doesn't
-    // briefly see "login" before landing on "home".
     if (authViewModel.isInitializing) {
         Box(
             modifier = Modifier.fillMaxSize(),
@@ -92,7 +86,6 @@ fun AppNavigation() {
             NewPasswordScreen(navController, authViewModel)
         }
 
-        // LoginScreen still navigates to "profile"; this route now opens your Home.
         composable("profile") {
             CommunityHomeScreenWithSupabase(navController, authViewModel)
         }
@@ -134,11 +127,26 @@ fun AppNavigation() {
             DonationListScreen(navController)
         }
 
+        composable("donationFilter") {
+            DonationFilterScreen(navController)
+        }
+
         composable(
             route = "donationDetail/{donationId}",
             arguments = listOf(navArgument("donationId") { type = NavType.StringType })
         ) { backStackEntry ->
             DonationDetailScreen(
+                navController = navController,
+                donationId = backStackEntry.arguments?.getString("donationId").orEmpty(),
+                authViewModel = authViewModel
+            )
+        }
+
+        composable(
+            route = "donationReservers/{donationId}",
+            arguments = listOf(navArgument("donationId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            DonationReserversScreen(
                 navController = navController,
                 donationId = backStackEntry.arguments?.getString("donationId").orEmpty()
             )

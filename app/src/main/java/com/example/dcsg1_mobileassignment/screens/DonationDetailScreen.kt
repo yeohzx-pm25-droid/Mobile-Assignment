@@ -5,6 +5,8 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,7 +22,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AccessTime
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -28,12 +32,18 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
@@ -43,11 +53,14 @@ import androidx.navigation.NavController
 import com.example.dcsg1_mobileassignment.communityhelp.model.DonationPost
 import com.example.dcsg1_mobileassignment.communityhelp.screens.CommunityColors
 import com.example.dcsg1_mobileassignment.utils.openLocationInMaps
+import com.example.dcsg1_mobileassignment.viewmodel.AuthViewModel
+import kotlinx.coroutines.launch
 
 @Composable
 fun DonationDetailScreen(
     navController: NavController,
-    donationId: String
+    donationId: String,
+    authViewModel: AuthViewModel
 ) {
     val donation = CommunityPostStore.donations.firstOrNull { it.id == donationId }
 
@@ -57,7 +70,12 @@ fun DonationDetailScreen(
     }
 
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
     val reserved = CommunityPostStore.reservedDonationIds.contains(donation.id)
+    val myReservedQuantity = CommunityPostStore.reservedQuantityFor(donation.id)
+    val remaining = CommunityPostStore.remainingQuantity(donation)
+    val fullyReserved = CommunityPostStore.isFullyReserved(donation)
+    var pickedQuantity by remember(donation.id) { mutableIntStateOf(1) }
 
     Column(
         modifier = Modifier
@@ -69,21 +87,22 @@ fun DonationDetailScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp, vertical = 22.dp)
         ) {
             RemoteDonationImage(
                 imageUrl = CommunityPostStore.imageUrlForDonation(donation.id),
                 fallbackTint = donation.tint,
                 imageRes = donation.imageRes,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(180.dp),
-                cornerRadius = 12.dp
+                modifier = Modifier.fillMaxWidth(),
+                cornerRadius = 12.dp,
+                contentScale = ContentScale.Fit,
+                matchImageAspectRatio = true
             )
 
             Spacer(Modifier.height(20.dp))
 
-            DonationHeader(donation, reserved)
+            DonationHeader(donation, remaining, fullyReserved)
 
             HorizontalDivider(
                 modifier = Modifier.padding(top = 16.dp, bottom = 26.dp),
@@ -132,7 +151,7 @@ fun DonationDetailScreen(
                 underline = false
             )
 
-            Spacer(Modifier.weight(1f))
+            Spacer(Modifier.height(32.dp))
 
             if (donation.mine) {
                 Row(
@@ -177,33 +196,148 @@ fun DonationDetailScreen(
                         )
                     }
                 }
-            } else {
-                Button(
-                    onClick = {
-                        if (reserved) {
-                            CommunityPostStore.unreserveDonation(donation.id)
-                            Toast.makeText(context, "Reservation cancelled", Toast.LENGTH_SHORT).show()
-                        } else {
-                            CommunityPostStore.reserveDonation(donation.id)
-                            Toast.makeText(context, "Item reserved", Toast.LENGTH_SHORT).show()
-                        }
-                    },
+
+                Spacer(Modifier.height(12.dp))
+
+                val totalReserved = CommunityPostStore.totalReservedQuantityFor(donation.id)
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = Color.White,
+                    border = BorderStroke(1.dp, CommunityColors.FieldBorder),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(58.dp),
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (reserved) Color(0xFFE53935) else CommunityColors.Green
-                    )
+                        .clickable { navController.navigate("donationReservers/${donation.id}") }
                 ) {
-                    Text(
-                        text = if (reserved) "Unreserve Item" else "Reserve This Item",
-                        color = Color.White,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = if (totalReserved > 0) "View Reservations" else "No Reservations Yet",
+                            color = CommunityColors.TextPrimary,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        if (totalReserved > 0) {
+                            Text(
+                                text = "$totalReserved of ${donation.quantity} claimed",
+                                color = CommunityColors.Green,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+            } else {
+                if (reserved) {
+                    Column {
+                        Text(
+                            text = "You reserved $myReservedQuantity of this item.",
+                            color = CommunityColors.TextMuted,
+                            fontSize = 12.sp
+                        )
+                        Spacer(Modifier.height(10.dp))
+                        Button(
+                            onClick = {
+                                coroutineScope.launch {
+                                    CommunityPostStore.unreserveDonationFromSupabase(donation.id)
+                                        .onSuccess {
+                                            Toast.makeText(context, "Reservation cancelled", Toast.LENGTH_SHORT).show()
+                                        }
+                                        .onFailure {
+                                            Toast.makeText(context, "Something went wrong. Please try again.", Toast.LENGTH_SHORT).show()
+                                        }
+                                }
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(58.dp),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE53935))
+                        ) {
+                            Text(
+                                text = "Unreserve Item",
+                                color = Color.White,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                } else if (fullyReserved) {
+                    Button(
+                        onClick = {},
+                        enabled = false,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(58.dp),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = CommunityColors.TextMuted,
+                            disabledContainerColor = CommunityColors.TextMuted
+                        )
+                    ) {
+                        Text(
+                            text = "Fully Reserved",
+                            color = Color.White,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                } else {
+                    Column {
+                        if (donation.quantity > 1) {
+                            QuantityStepper(
+                                quantity = pickedQuantity,
+                                maxQuantity = remaining,
+                                onQuantityChange = { pickedQuantity = it }
+                            )
+                            Spacer(Modifier.height(14.dp))
+                        }
+
+                        Button(
+                            onClick = {
+                                val amount = if (donation.quantity > 1) pickedQuantity else 1
+                                coroutineScope.launch {
+                                    CommunityPostStore.reserveDonationToSupabase(
+                                        donationId = donation.id,
+                                        reserverName = authViewModel.currentUser?.fullName.orEmpty(),
+                                        reserverPhone = authViewModel.currentUser?.phone.orEmpty(),
+                                        amount = amount
+                                    )
+                                        .onSuccess { actuallyReserved ->
+                                            if (actuallyReserved > 0) {
+                                                Toast.makeText(context, "Reserved $actuallyReserved item(s)", Toast.LENGTH_SHORT).show()
+                                                pickedQuantity = 1
+                                            } else {
+                                                Toast.makeText(context, "This item is fully reserved", Toast.LENGTH_SHORT).show()
+                                            }
+                                        }
+                                        .onFailure {
+                                            Toast.makeText(context, "Something went wrong. Please try again.", Toast.LENGTH_SHORT).show()
+                                        }
+                                }
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(58.dp),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = CommunityColors.Green)
+                        ) {
+                            Text(
+                                text = if (donation.quantity > 1) "Reserve $pickedQuantity Item(s)" else "Reserve This Item",
+                                color = Color.White,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
                 }
             }
+
+            Spacer(Modifier.height(24.dp))
         }
     }
 }
@@ -243,9 +377,16 @@ private fun DonationDetailTopBar(onBack: () -> Unit) {
 }
 
 @Composable
-private fun DonationHeader(donation: DonationPost, reserved: Boolean) {
-    Row(Modifier.fillMaxWidth()) {
-        Column(Modifier.weight(1f)) {
+private fun DonationHeader(donation: DonationPost, remaining: Int, fullyReserved: Boolean) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(end = 12.dp)
+        ) {
             Text(
                 text = donation.title,
                 color = CommunityColors.TextPrimary,
@@ -261,8 +402,12 @@ private fun DonationHeader(donation: DonationPost, reserved: Boolean) {
         }
 
         Text(
-            text = if (reserved) "Reserved" else "Free",
-            color = if (reserved) CommunityColors.TextMuted else CommunityColors.Green,
+            text = when {
+                fullyReserved -> "Fully Reserved"
+                donation.quantity <= 1 -> "Free"
+                else -> "$remaining of ${donation.quantity} left"
+            },
+            color = if (fullyReserved) CommunityColors.TextMuted else CommunityColors.Green,
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold
         )
@@ -370,6 +515,71 @@ private fun MapLocationCard(
                     textDecoration = TextDecoration.Underline
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun QuantityStepper(
+    quantity: Int,
+    maxQuantity: Int,
+    onQuantityChange: (Int) -> Unit
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Text(
+            text = "Quantity (max $maxQuantity)",
+            color = CommunityColors.TextMuted,
+            fontSize = 12.sp
+        )
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            StepperButton(
+                icon = Icons.Filled.Remove,
+                enabled = quantity > 1,
+                onClick = { onQuantityChange((quantity - 1).coerceAtLeast(1)) }
+            )
+
+            Text(
+                text = quantity.toString(),
+                color = CommunityColors.TextPrimary,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(horizontal = 18.dp)
+            )
+
+            StepperButton(
+                icon = Icons.Filled.Add,
+                enabled = quantity < maxQuantity,
+                onClick = { onQuantityChange((quantity + 1).coerceAtMost(maxQuantity)) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun StepperButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    enabled: Boolean,
+    onClick: () -> Unit
+) {
+    Surface(
+        shape = RoundedCornerShape(8.dp),
+        color = if (enabled) CommunityColors.Green else CommunityColors.FieldBorder,
+        modifier = Modifier
+            .size(34.dp)
+            .clickable(enabled = enabled) { onClick() }
+    ) {
+        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(18.dp)
+            )
         }
     }
 }

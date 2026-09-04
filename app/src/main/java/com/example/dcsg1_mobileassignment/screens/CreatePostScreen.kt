@@ -83,7 +83,6 @@ fun CreatePostScreen(
     var postType by remember { mutableStateOf(initialType) }
     var isPosting by remember { mutableStateOf(false) }
 
-    // Load existing data if editing
     val existingJob = if (postId != null && postType == PostType.Job) {
         CommunityPostStore.jobs.firstOrNull { it.id == postId }
     } else null
@@ -96,7 +95,6 @@ fun CreatePostScreen(
     var jobCategory by remember { mutableStateOf(existingJob?.category ?: CommunityData.jobCategories.first()) }
     var jobLocation by remember { mutableStateOf(existingJob?.location ?: "") }
 
-    // Parse payment
     val initialPayment = existingJob?.payment?.split(" ")?.firstOrNull()?.removePrefix("RM") ?: ""
     val initialUnit = existingJob?.payment?.split("/")?.lastOrNull()?.trim()?.lowercase()?.replaceFirstChar { it.uppercase() } ?: "Day"
 
@@ -109,6 +107,7 @@ fun CreatePostScreen(
     var donationLocation by remember { mutableStateOf(existingDonation?.location ?: "") }
     var donationPhotoUri by remember { mutableStateOf<Uri?>(null) }
     var donationDescription by remember { mutableStateOf(existingDonation?.description ?: "") }
+    var donationQuantity by remember { mutableStateOf((existingDonation?.quantity ?: 1).toString()) }
 
     var leaveDialog by remember { mutableStateOf(false) }
     var alertTitle by remember { mutableStateOf("") }
@@ -186,7 +185,8 @@ fun CreatePostScreen(
                 donationCategory != CommunityData.donationCategories.first() ||
                 donationLocation.isNotBlank() ||
                 donationPhotoUri != null ||
-                donationDescription.isNotBlank()
+                donationDescription.isNotBlank() ||
+                donationQuantity != "1"
     }
 
     fun goHome() {
@@ -314,8 +314,8 @@ fun CreatePostScreen(
                             result.onSuccess {
                                 Toast.makeText(context, "Job posted successfully", Toast.LENGTH_SHORT).show()
                                 navController.popBackStack()
-                            }.onFailure {
-                                showAlert("Post Failed", "Unable to post job. Please try again.")
+                            }.onFailure { error ->
+                                showAlert("Post Failed", error.message ?: "Unable to post job. Please try again.")
                             }
                         }
                     }
@@ -326,6 +326,13 @@ fun CreatePostScreen(
                 }
                 CategoryDropdown("Item Category", donationCategory, CommunityData.donationCategories) {
                     donationCategory = it
+                }
+                LabeledField("Quantity") {
+                    InputField(
+                        donationQuantity,
+                        { new -> if (new.length <= 4 && new.all { it.isDigit() }) donationQuantity = new },
+                        "e.g. 10"
+                    )
                 }
                 LabeledField("Pickup Location") {
                     InputField(donationLocation, { donationLocation = it }, "Please Enter a Full Malaysia Address.")
@@ -349,6 +356,11 @@ fun CreatePostScreen(
                     }
                     if (donationName.isBlank() || donationLocation.isBlank() || donationDescription.isBlank()) {
                         showAlert("Incomplete Form", "Please complete the item name, pickup location, and description.")
+                        return@PrimaryButton
+                    }
+                    val parsedQuantity = donationQuantity.trim().toIntOrNull()
+                    if (parsedQuantity == null || parsedQuantity < 1) {
+                        showAlert("Invalid Quantity", "Please enter how many of this item you're giving away (at least 1).")
                         return@PrimaryButton
                     }
                     if (!isEditing && donationPhotoUri == null) {
@@ -377,6 +389,7 @@ fun CreatePostScreen(
                             description = donationDescription.trim(),
                             posted = existingDonation?.posted ?: "Posted just now",
                             tint = PostValidator.tintForCategory(donationCategory),
+                            quantity = parsedQuantity,
                             mine = true
                         )
 
@@ -398,15 +411,16 @@ fun CreatePostScreen(
                                 itemCategory = donationCategory,
                                 pickupLocation = donationLocation,
                                 description = donationDescription,
-                                photoUri = selectedPhotoUri
+                                photoUri = selectedPhotoUri,
+                                quantity = parsedQuantity
                             )
                             isPosting = false
 
                             result.onSuccess {
                                 Toast.makeText(context, "Donation posted successfully", Toast.LENGTH_SHORT).show()
                                 navController.popBackStack()
-                            }.onFailure {
-                                showAlert("Post Failed", "Unable to post donation. Please try again.")
+                            }.onFailure { error ->
+                                showAlert("Post Failed", error.message ?: "Unable to post donation. Please try again.")
                             }
                         }
                     }

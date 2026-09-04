@@ -35,9 +35,11 @@ object CommunityPostStore {
     }
 
     val appliedJobIds = mutableStateListOf<String>()
-    // jobId -> status ("pending" / "accepted" / "rejected") for MY OWN applications.
     val appliedJobStatuses = mutableStateMapOf<String, String>()
     val reservedDonationIds = mutableStateListOf<String>()
+
+    private val reservedQuantities = mutableStateMapOf<String, Int>()
+    private val myReservedQuantities = mutableStateMapOf<String, Int>()
 
     private val jobCreatedAtMillis = mutableStateMapOf<String, Long>()
     private val donationCreatedAtMillis = mutableStateMapOf<String, Long>()
@@ -87,6 +89,35 @@ object CommunityPostStore {
         jobSalaryUnitFilter = JOB_FILTER_ALL
     }
 
+    var donationSearchQuery by mutableStateOf("")
+    var donationCategoryFilter by mutableStateOf(JOB_FILTER_ALL)
+    var donationStateFilter by mutableStateOf(JOB_FILTER_ALL)
+
+    val activeDonationFilterCount: Int
+        get() = listOf(donationCategoryFilter, donationStateFilter)
+            .count { it != JOB_FILTER_ALL }
+
+    val filteredDonations: List<DonationPost>
+        get() = donations.filter { donation ->
+            val matchesSearch = donationSearchQuery.isBlank() ||
+                    donation.title.contains(donationSearchQuery, ignoreCase = true) ||
+                    donation.location.contains(donationSearchQuery, ignoreCase = true) ||
+                    donation.category.contains(donationSearchQuery, ignoreCase = true)
+
+            val matchesCategory = donationCategoryFilter == JOB_FILTER_ALL ||
+                    donation.category == donationCategoryFilter
+
+            val matchesState = donationStateFilter == JOB_FILTER_ALL ||
+                    donation.location.contains(donationStateFilter, ignoreCase = true)
+
+            matchesSearch && matchesCategory && matchesState
+        }
+
+    fun resetDonationFilters() {
+        donationCategoryFilter = JOB_FILTER_ALL
+        donationStateFilter = JOB_FILTER_ALL
+    }
+
     fun resetLocalPosts() {
         jobs.clear()
         jobs.addAll(CommunityData.sampleJobs)
@@ -94,6 +125,8 @@ object CommunityPostStore {
         donations.addAll(CommunityData.sampleDonations)
         appliedJobIds.clear()
         reservedDonationIds.clear()
+        reservedQuantities.clear()
+        myReservedQuantities.clear()
         appliedJobStatuses.clear()
         jobCreatedAtMillis.clear()
         donationCreatedAtMillis.clear()
@@ -137,19 +170,29 @@ object CommunityPostStore {
                     }
                     .decodeList<JobApplicationRow>()
 
-                Triple(remoteJobs, remoteDonations, myApplications)
+                val remoteReservations = if (remoteDonations.isEmpty()) {
+                    emptyList()
+                } else {
+                    supabase.from("donation_reservations")
+                        .select {
+                            filter { isIn("donation_id", remoteDonations.map { it.id }) }
+                        }
+                        .decodeList<DonationReservation>()
+                }
+
+                RemoteBundle(remoteJobs, remoteDonations, myApplications, remoteReservations)
             }
 
             jobCreatedAtMillis.clear()
             donationCreatedAtMillis.clear()
             donationImageUrls.clear()
 
-            val loadedJobs = remoteData.first.map { row ->
+            val loadedJobs = remoteData.jobs.map { row ->
                 row.createdAt.toEpochMillisOrNull()?.let { jobCreatedAtMillis[row.id] = it }
                 row.toJobPost(currentUserId)
             }
 
-            val loadedDonations = remoteData.second.map { row ->
+            val loadedDonations = remoteData.donations.map { row ->
                 row.createdAt.toEpochMillisOrNull()?.let { donationCreatedAtMillis[row.id] = it }
                 donationImageUrls[row.id] = row.imageUrl
                 row.toDonationPost(currentUserId)
@@ -164,9 +207,27 @@ object CommunityPostStore {
             donations.addAll(CommunityData.sampleDonations)
 
             appliedJobIds.clear()
-            appliedJobIds.addAll(remoteData.third.map { it.jobId })
+            appliedJobIds.addAll(remoteData.myApplications.map { it.jobId })
             appliedJobStatuses.clear()
-            remoteData.third.forEach { appliedJobStatuses[it.jobId] = it.status }
+            remoteData.myApplications.forEach { appliedJobStatuses[it.jobId] = it.status }
+
+            reservedQuantities.clear()
+            myReservedQuantities.clear()
+            reservedDonationIds.clear()
+
+            remoteData.reservations
+                .groupBy { it.donationId }
+                .forEach { (donationId, rows) ->
+                    reservedQuantities[donationId] = rows.sumOf { it.quantity }
+                }
+
+            remoteData.reservations
+                .filter { it.reservedBy == currentUserId }
+                .groupBy { it.donationId }
+                .forEach { (donationId, rows) ->
+                    myReservedQuantities[donationId] = rows.sumOf { it.quantity }
+                    reservedDonationIds.add(donationId)
+                }
 
             lastRemotePostError = null
         } catch (e: Exception) {
@@ -221,7 +282,8 @@ object CommunityPostStore {
         itemCategory: String,
         pickupLocation: String,
         description: String,
-        photoUri: Uri
+        photoUri: Uri,
+        quantity: Int = 1
     ): Result<DonationPost> {
         return runCatching {
             val currentUserId = supabase.auth.currentUserOrNull()?.id
@@ -238,7 +300,8 @@ object CommunityPostStore {
                             itemCategory = itemCategory,
                             pickupLocation = pickupLocation.trim(),
                             description = description.trim(),
-                            imageUrl = imageUrl
+                            imageUrl = imageUrl,
+                            quantity = quantity.coerceAtLeast(1)
                         )
                     ) {
                         select()
@@ -356,10 +419,6 @@ object CommunityPostStore {
         }
     }
 
-    // ==========================================
-    // JOB APPLICANTS - job poster's view (Person 1 accepting/rejecting Person 2)
-    // ==========================================
-
     suspend fun loadApplicantsForJob(jobId: String): Result<List<JobApplicant>> {
         return runCatching {
             withContext(Dispatchers.IO) {
@@ -384,14 +443,96 @@ object CommunityPostStore {
         }
     }
 
-    fun reserveDonation(donationId: String) {
-        if (!reservedDonationIds.contains(donationId)) {
-            reservedDonationIds.add(donationId)
+    fun remainingQuantity(donation: DonationPost): Int {
+        val alreadyClaimed = reservedQuantities[donation.id] ?: 0
+        return (donation.quantity - alreadyClaimed).coerceAtLeast(0)
+    }
+
+    fun isFullyReserved(donation: DonationPost): Boolean {
+        return remainingQuantity(donation) <= 0
+    }
+
+    fun reservedQuantityFor(donationId: String): Int {
+        return myReservedQuantities[donationId] ?: 0
+    }
+
+    fun totalReservedQuantityFor(donationId: String): Int {
+        return reservedQuantities[donationId] ?: 0
+    }
+
+    suspend fun reserveDonationToSupabase(
+        donationId: String,
+        reserverName: String,
+        reserverPhone: String,
+        amount: Int = 1
+    ): Result<Int> {
+        return runCatching {
+            val userId = supabase.auth.currentUserOrNull()?.id
+                ?: error("Please login before reserving an item.")
+
+            val donation = donations.firstOrNull { it.id == donationId }
+                ?: error("This item is no longer available.")
+
+            val alreadyClaimed = reservedQuantities[donationId] ?: 0
+            val claimable = (donation.quantity - alreadyClaimed).coerceAtLeast(0)
+            val actualAmount = amount.coerceIn(0, claimable)
+            if (actualAmount <= 0) return@runCatching 0
+
+            withContext(Dispatchers.IO) {
+                supabase.from("donation_reservations").insert(
+                    DonationReservationInsert(
+                        donationId = donationId,
+                        reservedBy = userId,
+                        reserverName = reserverName.trim(),
+                        reserverPhone = reserverPhone.trim(),
+                        quantity = actualAmount
+                    )
+                )
+            }
+
+            reservedQuantities[donationId] = alreadyClaimed + actualAmount
+            myReservedQuantities[donationId] = (myReservedQuantities[donationId] ?: 0) + actualAmount
+            if (!reservedDonationIds.contains(donationId)) {
+                reservedDonationIds.add(donationId)
+            }
+            actualAmount
         }
     }
 
-    fun unreserveDonation(donationId: String) {
-        reservedDonationIds.remove(donationId)
+    suspend fun unreserveDonationFromSupabase(donationId: String): Result<Unit> {
+        return runCatching {
+            val userId = supabase.auth.currentUserOrNull()?.id
+                ?: error("Please login before updating a reservation.")
+
+            withContext(Dispatchers.IO) {
+                supabase.from("donation_reservations").delete {
+                    filter {
+                        eq("donation_id", donationId)
+                        eq("reserved_by", userId)
+                    }
+                }
+            }
+
+            reservedQuantities[donationId] =
+                ((reservedQuantities[donationId] ?: 0) - (myReservedQuantities[donationId] ?: 0)).coerceAtLeast(0)
+            myReservedQuantities.remove(donationId)
+            reservedDonationIds.remove(donationId)
+        }
+    }
+
+    suspend fun loadReserversForDonation(donationId: String): Result<List<DonationReservation>> {
+        return runCatching {
+            val rows = withContext(Dispatchers.IO) {
+                supabase.from("donation_reservations")
+                    .select {
+                        filter { eq("donation_id", donationId) }
+                        order("created_at", Order.DESCENDING)
+                    }
+                    .decodeList<DonationReservation>()
+            }
+            reservedQuantities[donationId] = rows.sumOf { it.quantity }
+            rows
+        }
     }
 
     fun deleteJob(jobId: String) {
@@ -403,6 +544,8 @@ object CommunityPostStore {
     fun deleteDonation(donationId: String) {
         donations.removeAll { it.id == donationId }
         reservedDonationIds.remove(donationId)
+        reservedQuantities.remove(donationId)
+        myReservedQuantities.remove(donationId)
         donationCreatedAtMillis.remove(donationId)
         donationImageUrls.remove(donationId)
     }
@@ -424,6 +567,13 @@ object CommunityPostStore {
 
 private const val DONATION_IMAGE_BUCKET = "donation-images"
 private const val SUPABASE_PUBLIC_URL = "https://teuanaiyzlytvnvxdzcr.supabase.co"
+
+private data class RemoteBundle(
+    val jobs: List<SupabaseJobRow>,
+    val donations: List<SupabaseDonationRow>,
+    val myApplications: List<JobApplicationRow>,
+    val reservations: List<DonationReservation>
+)
 
 @Serializable
 private data class SupabaseJobInsert(
@@ -458,7 +608,6 @@ private data class JobApplicationStatusUpdate(
     val status: String
 )
 
-// One applicant's submitted details for a job, as seen by the job poster.
 @Serializable
 data class JobApplicant(
     val id: String,
@@ -468,6 +617,28 @@ data class JobApplicant(
     @SerialName("applicant_phone") val applicantPhone: String,
     val status: String,
     @SerialName("created_at") val createdAt: String? = null
+)
+
+@Serializable
+data class DonationReservation(
+    val id: String,
+    @SerialName("donation_id") val donationId: String,
+    @SerialName("reserved_by") val reservedBy: String,
+    @SerialName("reserver_name") val reserverName: String? = null,
+    @SerialName("reserver_phone") val reserverPhone: String? = null,
+    val quantity: Int = 1,
+    val status: String = "confirmed",
+    @SerialName("created_at") val createdAt: String? = null
+)
+
+@Serializable
+private data class DonationReservationInsert(
+    @SerialName("donation_id") val donationId: String,
+    @SerialName("reserved_by") val reservedBy: String,
+    @SerialName("reserver_name") val reserverName: String,
+    @SerialName("reserver_phone") val reserverPhone: String,
+    val quantity: Int,
+    val status: String = "confirmed"
 )
 
 @Serializable
@@ -496,7 +667,8 @@ private data class SupabaseDonationInsert(
     @SerialName("item_category") val itemCategory: String,
     @SerialName("pickup_location") val pickupLocation: String,
     val description: String,
-    @SerialName("image_url") val imageUrl: String
+    @SerialName("image_url") val imageUrl: String,
+    val quantity: Int = 1
 )
 
 @Serializable
@@ -508,6 +680,7 @@ private data class SupabaseDonationRow(
     @SerialName("pickup_location") val pickupLocation: String,
     val description: String,
     @SerialName("image_url") val imageUrl: String,
+    val quantity: Int = 1,
     @SerialName("created_at") val createdAt: String? = null
 )
 
@@ -539,6 +712,7 @@ private fun SupabaseDonationRow.toDonationPost(currentUserId: String): DonationP
         description = description,
         posted = createdAt.toPostedText(),
         tint = PostValidator.tintForCategory(itemCategory),
+        quantity = quantity,
         mine = userId == currentUserId
     )
 }

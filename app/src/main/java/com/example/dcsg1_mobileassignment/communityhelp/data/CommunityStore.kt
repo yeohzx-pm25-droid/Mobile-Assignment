@@ -39,9 +39,6 @@ object CommunityStore {
         jobSalaryUnitFilter = JOB_FILTER_ALL
     }
 
-    // Jobs after search text + all active filters are applied. Read this from
-    // composables (not remember-ed) so it recomputes whenever the underlying
-    // state changes.
     val filteredJobs: List<JobPost>
         get() = jobs.filter { job ->
             val matchesSearch = jobSearchQuery.isBlank() ||

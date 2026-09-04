@@ -17,8 +17,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -28,10 +30,6 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -40,28 +38,20 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.dcsg1_mobileassignment.communityhelp.data.CommunityData
+import com.example.dcsg1_mobileassignment.communityhelp.data.JOB_FILTER_ALL
 import com.example.dcsg1_mobileassignment.communityhelp.model.BottomTab
 import com.example.dcsg1_mobileassignment.communityhelp.model.DonationPost
 import com.example.dcsg1_mobileassignment.communityhelp.screens.CommunityColors
 import com.example.dcsg1_mobileassignment.communityhelp.screens.CommunityScaffold
 import com.example.dcsg1_mobileassignment.communityhelp.screens.navigateSingleTop
 
+private val quickDonationCategories = listOf(JOB_FILTER_ALL) + CommunityData.donationCategories
+
 @Composable
 fun DonationListScreen(navController: NavController) {
-    var query by remember { mutableStateOf("") }
-    var selectedCategory by remember { mutableStateOf("All") }
-
-    val categories = remember { listOf("All") + CommunityData.donationCategories }
-
-    val filtered = CommunityPostStore.donations.filter { donation ->
-        val matchesCategory = selectedCategory == "All" || donation.category == selectedCategory
-        val matchesQuery = query.isBlank() ||
-                donation.title.contains(query, ignoreCase = true) ||
-                donation.location.contains(query, ignoreCase = true)
-        matchesCategory && matchesQuery
-    }
-
     CommunityScaffold(navController, BottomTab.Donation) { innerPadding ->
+        val donations = CommunityPostStore.filteredDonations
+
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -84,42 +74,28 @@ fun DonationListScreen(navController: NavController) {
 
                 Spacer(Modifier.height(16.dp))
 
-                OutlinedTextField(
-                    value = query,
-                    onValueChange = { query = it },
-                    placeholder = { Text("Search items...") },
-                    leadingIcon = {
-                        Icon(Icons.Filled.Search, contentDescription = null, tint = CommunityColors.TextMuted)
-                    },
-                    singleLine = true,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = Color.White,
-                        unfocusedContainerColor = Color.White
-                    ),
-                    modifier = Modifier.fillMaxWidth()
+                DonationSearchBar(
+                    query = CommunityPostStore.donationSearchQuery,
+                    onQueryChange = { CommunityPostStore.donationSearchQuery = it },
+                    activeFilterCount = CommunityPostStore.activeDonationFilterCount,
+                    onFilterClick = { navController.navigateSingleTop("donationFilter") }
                 )
 
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(14.dp))
 
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(categories) { category ->
-                        CategoryChip(
-                            label = category,
-                            selected = category == selectedCategory
-                        ) {
-                            selectedCategory = category
-                        }
-                    }
-                }
+                DonationCategoryChipsRow(
+                    selected = CommunityPostStore.donationCategoryFilter,
+                    onSelected = { CommunityPostStore.donationCategoryFilter = it }
+                )
 
                 Spacer(Modifier.height(18.dp))
             }
 
-            if (filtered.isEmpty()) {
+            if (donations.isEmpty()) {
                 item { EmptyDonationState() }
             } else {
                 items(
-                    items = filtered,
+                    items = donations,
                     key = { it.id }
                 ) { donation ->
                     DonationItemCard(donation) {
@@ -132,24 +108,94 @@ fun DonationListScreen(navController: NavController) {
 }
 
 @Composable
-private fun CategoryChip(
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit
+private fun DonationSearchBar(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    activeFilterCount: Int,
+    onFilterClick: () -> Unit
 ) {
-    Surface(
-        modifier = Modifier.clickable { onClick() },
-        color = if (selected) CommunityColors.Green else Color.White,
-        shape = RoundedCornerShape(20.dp),
-        border = BorderStroke(1.dp, if (selected) CommunityColors.Green else CommunityColors.FieldBorder)
-    ) {
-        Text(
-            text = label,
-            color = if (selected) Color.White else CommunityColors.TextPrimary,
-            fontSize = 12.sp,
-            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        OutlinedTextField(
+            value = query,
+            onValueChange = onQueryChange,
+            placeholder = { Text("Search items...", fontSize = 13.sp) },
+            singleLine = true,
+            leadingIcon = {
+                Icon(Icons.Filled.Search, contentDescription = null, tint = CommunityColors.TextMuted)
+            },
+            shape = RoundedCornerShape(10.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedContainerColor = Color.White,
+                unfocusedContainerColor = Color.White,
+                focusedBorderColor = CommunityColors.Green,
+                unfocusedBorderColor = CommunityColors.FieldBorder
+            ),
+            modifier = Modifier
+                .weight(1f)
+                .height(52.dp)
         )
+
+        Spacer(Modifier.width(10.dp))
+
+        Box {
+            Surface(
+                shape = RoundedCornerShape(10.dp),
+                color = Color.White,
+                border = BorderStroke(1.dp, CommunityColors.FieldBorder),
+                modifier = Modifier
+                    .size(52.dp)
+                    .clickable { onFilterClick() }
+            ) {
+                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                    Icon(Icons.Filled.FilterList, contentDescription = "Filter donations", tint = CommunityColors.TextPrimary)
+                }
+            }
+
+            if (activeFilterCount > 0) {
+                Surface(
+                    shape = CircleShape,
+                    color = CommunityColors.Green,
+                    modifier = Modifier
+                        .size(18.dp)
+                        .align(Alignment.TopEnd)
+                ) {
+                    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                        Text(
+                            text = activeFilterCount.toString(),
+                            color = Color.White,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DonationCategoryChipsRow(
+    selected: String,
+    onSelected: (String) -> Unit
+) {
+    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        items(quickDonationCategories) { category ->
+            val isSelected = selected == category
+            Surface(
+                shape = RoundedCornerShape(20.dp),
+                color = if (isSelected) CommunityColors.Green else Color.White,
+                border = BorderStroke(1.dp, if (isSelected) CommunityColors.Green else CommunityColors.FieldBorder),
+                modifier = Modifier.clickable { onSelected(category) }
+            ) {
+                Text(
+                    text = category,
+                    color = if (isSelected) Color.White else CommunityColors.TextPrimary,
+                    fontSize = 12.sp,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 9.dp)
+                )
+            }
+        }
     }
 }
 
@@ -161,7 +207,7 @@ private fun EmptyDonationState() {
             .padding(top = 40.dp),
         contentAlignment = Alignment.Center
     ) {
-        Text("No items found.", color = CommunityColors.TextMuted, fontSize = 13.sp)
+        Text("No items match your search or filters.", color = CommunityColors.TextMuted, fontSize = 13.sp)
     }
 }
 
@@ -170,7 +216,8 @@ fun DonationItemCard(
     donation: DonationPost,
     onClick: () -> Unit
 ) {
-    val reserved = CommunityPostStore.reservedDonationIds.contains(donation.id)
+    val fullyReserved = CommunityPostStore.isFullyReserved(donation)
+    val remaining = CommunityPostStore.remainingQuantity(donation)
 
     Card(
         modifier = Modifier
@@ -201,38 +248,63 @@ fun DonationItemCard(
                     text = donation.title,
                     color = CommunityColors.TextPrimary,
                     fontSize = 14.sp,
+                    lineHeight = 19.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(Modifier.height(4.dp))
-                Text(donation.location, color = CommunityColors.TextPrimary, fontSize = 11.sp)
+                Text(
+                    text = donation.location,
+                    color = CommunityColors.TextPrimary,
+                    fontSize = 11.sp,
+                    lineHeight = 16.sp
+                )
                 Text(
                     text = "${donation.category} - ${donation.posted}",
                     color = CommunityColors.TextMuted,
                     fontSize = 10.sp
                 )
+                if (donation.mine) {
+                    val totalReserved = CommunityPostStore.totalReservedQuantityFor(donation.id)
+                    if (totalReserved > 0) {
+                        Spacer(Modifier.height(2.dp))
+                        Text(
+                            text = "$totalReserved reserved",
+                            color = CommunityColors.Green,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
             }
 
             Spacer(Modifier.width(8.dp))
 
-            StatusTag(reserved = reserved)
+            StatusTag(fullyReserved = fullyReserved, remaining = remaining, totalQuantity = donation.quantity)
         }
     }
 }
 
 @Composable
-private fun StatusTag(reserved: Boolean) {
-    val color = if (reserved) CommunityColors.TextMuted else CommunityColors.Green
+private fun StatusTag(fullyReserved: Boolean, remaining: Int, totalQuantity: Int) {
+    val color = if (fullyReserved) CommunityColors.TextMuted else CommunityColors.Green
+    val label = when {
+        fullyReserved -> "Reserved"
+        totalQuantity <= 1 -> "Free"
+        else -> "$remaining left"
+    }
     Surface(
         color = Color.Transparent,
         shape = RoundedCornerShape(10.dp),
-        border = BorderStroke(1.dp, color)
+        border = BorderStroke(1.dp, color),
+        modifier = Modifier.width(57.dp)
     ) {
-        Text(
-            text = if (reserved) "Reserved" else "Free",
-            color = color,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(horizontal = 9.dp, vertical = 3.dp)
-        )
+        Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(vertical = 3.dp)) {
+            Text(
+                text = label,
+                color = color,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
     }
 }

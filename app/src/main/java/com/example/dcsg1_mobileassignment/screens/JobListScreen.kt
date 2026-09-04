@@ -269,7 +269,12 @@ private fun JobListCard(
                 }
             }
             Spacer(Modifier.height(8.dp))
-            Text(job.location, color = CommunityColors.TextPrimary, fontSize = 11.sp)
+            Text(
+                text = job.location,
+                color = CommunityColors.TextPrimary,
+                fontSize = 11.sp,
+                lineHeight = 16.sp
+            )
             Text(
                 text = "${job.category} - ${JobTimeFormatter.postedLine(job)}",
                 color = CommunityColors.TextMuted,
