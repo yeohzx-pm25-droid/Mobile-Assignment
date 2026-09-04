@@ -40,6 +40,7 @@ fun CommunityHomeScreenWithSupabase(
         ?.trim()
         ?.takeIf { it.isNotEmpty() }
         ?: "Student"
+    val homeJobs = CommunityPostStore.homeJobs.take(2)
 
     CommunityScaffold(navController, BottomTab.Home) { innerPadding ->
         androidx.compose.foundation.lazy.LazyColumn(
@@ -95,8 +96,8 @@ fun CommunityHomeScreenWithSupabase(
                 )
             }
 
-            items(CommunityPostStore.jobs.take(2).size) { index ->
-                val job = CommunityPostStore.jobs[index]
+            items(homeJobs.size) { index ->
+                val job = homeJobs[index]
                 HomeJobCard(job) {
                     navController.navigate("jobDetail/${job.id}")
                 }
@@ -164,13 +165,33 @@ private fun HomeJobCard(
     ) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 13.dp)) {
             Row(Modifier.fillMaxWidth()) {
-                Text(
-                    text = job.title,
-                    color = CommunityColors.TextPrimary,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.weight(1f)
-                )
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(end = 10.dp)
+                ) {
+                    Text(
+                        text = job.title,
+                        color = CommunityColors.TextPrimary,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    if (job.isUrgent) {
+                        Spacer(Modifier.height(5.dp))
+                        Surface(
+                            color = Color(0xFFFFF3E0),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text(
+                                text = "Urgent",
+                                color = Color(0xFFE65100),
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                }
                 Surface(
                     color = Color.Transparent,
                     shape = RoundedCornerShape(10.dp),

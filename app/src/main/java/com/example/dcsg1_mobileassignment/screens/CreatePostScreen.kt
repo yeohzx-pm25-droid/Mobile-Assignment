@@ -38,6 +38,8 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -101,6 +103,7 @@ fun CreatePostScreen(
     var jobPayment by remember { mutableStateOf(if (existingJob?.payment == "Negotiable") "" else initialPayment) }
     var jobPaymentUnit by remember { mutableStateOf(if (existingJob?.payment == "Negotiable") "Negotiable" else initialUnit) }
     var jobDescription by remember { mutableStateOf(existingJob?.description ?: "") }
+    var jobIsUrgent by remember { mutableStateOf(existingJob?.isUrgent ?: false) }
 
     var donationName by remember { mutableStateOf(existingDonation?.title ?: "") }
     var donationCategory by remember { mutableStateOf(existingDonation?.category ?: CommunityData.donationCategories.first()) }
@@ -179,7 +182,8 @@ fun CreatePostScreen(
                 jobLocation.isNotBlank() ||
                 jobPayment.isNotBlank() ||
                 jobPaymentUnit != "Day" ||
-                jobDescription.isNotBlank()
+                jobDescription.isNotBlank() ||
+                jobIsUrgent
     } else {
         donationName.isNotBlank() ||
                 donationCategory != CommunityData.donationCategories.first() ||
@@ -256,7 +260,11 @@ fun CreatePostScreen(
                 LabeledField("Description") {
                     InputField(jobDescription, { jobDescription = it }, "Tell more about the job...", lines = 3)
                 }
-                Spacer(Modifier.height(54.dp))
+                UrgentJobToggle(
+                    isUrgent = jobIsUrgent,
+                    onUrgentChange = { jobIsUrgent = it }
+                )
+                Spacer(Modifier.height(18.dp))
                 PrimaryButton(
                     label = if (isPosting) "Posting..." else if (isEditing) "Save Changes" else "Post Now"
                 ) {
@@ -292,7 +300,8 @@ fun CreatePostScreen(
                             payment = PostValidator.buildPayment(jobPayment, jobPaymentUnit),
                             description = jobDescription.trim(),
                             posted = existingJob?.posted ?: "Posted just now",
-                            mine = true
+                            mine = true,
+                            isUrgent = jobIsUrgent
                         )
 
                         if (isEditing) {
@@ -307,7 +316,8 @@ fun CreatePostScreen(
                                 location = jobLocation,
                                 payment = jobPayment,
                                 paymentUnit = jobPaymentUnit,
-                                description = jobDescription
+                                description = jobDescription,
+                                isUrgent = jobIsUrgent
                             )
                             isPosting = false
 
@@ -461,6 +471,58 @@ fun CreatePostScreen(
                 }
             }
         )
+    }
+}
+
+@Composable
+private fun UrgentJobToggle(
+    isUrgent: Boolean,
+    onUrgentChange: (Boolean) -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onUrgentChange(!isUrgent) },
+        color = Color.White,
+        shape = RoundedCornerShape(10.dp),
+        border = BorderStroke(1.dp, CommunityColors.FieldBorder)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(end = 12.dp)
+            ) {
+                Text(
+                    text = "Urgent Job",
+                    color = CommunityColors.TextPrimary,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = "Tick this if urgent hiring",
+                    color = CommunityColors.TextMuted,
+                    fontSize = 11.sp
+                )
+            }
+
+            Checkbox(
+                checked = isUrgent,
+                onCheckedChange = onUrgentChange,
+                colors = CheckboxDefaults.colors(
+                    checkedColor = CommunityColors.Green,
+                    uncheckedColor = CommunityColors.TextMuted,
+                    checkmarkColor = Color.White
+                )
+            )
+        }
     }
 }
 

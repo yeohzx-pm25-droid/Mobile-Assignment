@@ -1,4 +1,4 @@
-package com.example.dcsg1_mobileassignment.communityhelp.model
+﻿package com.example.dcsg1_mobileassignment.communityhelp.model
 
 // Data class for one job post.
 data class JobPost(
@@ -9,5 +9,7 @@ data class JobPost(
     val payment: String,
     val description: String,
     val posted: String,
-    val mine: Boolean = false
+    val mine: Boolean = false,
+    val isUrgent: Boolean = false
 )
+

@@ -83,6 +83,12 @@ object CommunityPostStore {
             matchesSearch && matchesType && matchesState && matchesSalary
         }
 
+    val homeJobs: List<JobPost>
+        get() = jobs.sortedWith(
+            compareByDescending<JobPost> { it.isUrgent }
+                .thenByDescending { createdAtMillisForJob(it.id) ?: it.id.toLongOrNull() ?: 0L }
+        )
+
     fun resetJobFilters() {
         jobTypeFilter = JOB_FILTER_ALL
         jobStateFilter = JOB_FILTER_ALL
@@ -243,7 +249,8 @@ object CommunityPostStore {
         location: String,
         payment: String,
         paymentUnit: String,
-        description: String
+        description: String,
+        isUrgent: Boolean = false
     ): Result<JobPost> {
         return runCatching {
             val currentUserId = supabase.auth.currentUserOrNull()?.id
@@ -261,7 +268,8 @@ object CommunityPostStore {
                             paymentAmount = if (isNegotiable) null else payment.trim().toDoubleOrNull(),
                             paymentPeriod = paymentUnit,
                             isNegotiable = isNegotiable,
-                            description = description.trim()
+                            description = description.trim(),
+                            isUrgent = isUrgent
                         )
                     ) {
                         select()
@@ -584,7 +592,8 @@ private data class SupabaseJobInsert(
     @SerialName("payment_amount") val paymentAmount: Double? = null,
     @SerialName("payment_period") val paymentPeriod: String,
     @SerialName("is_negotiable") val isNegotiable: Boolean,
-    val description: String
+    val description: String,
+    @SerialName("is_urgent") val isUrgent: Boolean = false
 )
 
 @Serializable
@@ -656,6 +665,7 @@ private data class SupabaseJobRow(
     @SerialName("payment_amount") val paymentAmount: Double? = null,
     @SerialName("payment_period") val paymentPeriod: String,
     @SerialName("is_negotiable") val isNegotiable: Boolean,
+    @SerialName("is_urgent") val isUrgent: Boolean = false,
     val description: String,
     @SerialName("created_at") val createdAt: String? = null
 )
@@ -699,7 +709,8 @@ private fun SupabaseJobRow.toJobPost(currentUserId: String): JobPost {
         payment = paymentText,
         description = description,
         posted = createdAt.toPostedText(),
-        mine = userId == currentUserId
+        mine = userId == currentUserId,
+        isUrgent = isUrgent
     )
 }
 

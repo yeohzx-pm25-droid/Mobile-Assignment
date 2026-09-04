@@ -34,6 +34,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -76,6 +77,7 @@ fun DonationDetailScreen(
     val remaining = CommunityPostStore.remainingQuantity(donation)
     val fullyReserved = CommunityPostStore.isFullyReserved(donation)
     var pickedQuantity by remember(donation.id) { mutableIntStateOf(1) }
+    var isDeleting by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -178,18 +180,39 @@ fun DonationDetailScreen(
 
                     Button(
                         onClick = {
-                            CommunityPostStore.deleteDonation(donation.id)
-                            Toast.makeText(context, "Donation deleted", Toast.LENGTH_SHORT).show()
-                            navController.popBackStack()
+                            if (!isDeleting) {
+                                isDeleting = true
+                                coroutineScope.launch {
+                                    val result = CommunityPostStore.deleteDonationFromSupabase(donation.id)
+                                    isDeleting = false
+
+                                    result
+                                        .onSuccess {
+                                            Toast.makeText(context, "Donation deleted successfully", Toast.LENGTH_SHORT).show()
+                                            navController.popBackStack()
+                                        }
+                                        .onFailure {
+                                            Toast.makeText(
+                                                context,
+                                                "Delete failed. Please try again.",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                        }
+                                }
+                            }
                         },
+                        enabled = !isDeleting,
                         modifier = Modifier
                             .weight(1f)
                             .height(58.dp),
                         shape = RoundedCornerShape(10.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE53935))
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFE53935),
+                            disabledContainerColor = Color(0xFFE57373)
+                        )
                     ) {
                         Text(
-                            text = "Delete Post",
+                            text = if (isDeleting) "Deleting..." else "Delete Post",
                             color = Color.White,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold
