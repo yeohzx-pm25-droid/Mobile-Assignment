@@ -26,6 +26,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.dcsg1_mobileassignment.communityhelp.screens.CommunityColors
+import com.example.dcsg1_mobileassignment.ui.AppTopBar
+import androidx.compose.foundation.layout.navigationBarsPadding
 
 @Composable
 fun UserActivityListScreen(
@@ -45,40 +47,17 @@ fun UserActivityListScreen(
             .fillMaxSize()
             .background(CommunityColors.Surface)
     ) {
-        // Top Bar
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(90.dp)
-                .background(CommunityColors.Green)
-                .padding(start = 18.dp, top = 26.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = "Back",
-                tint = Color.White,
-                modifier = Modifier
-                    .size(24.dp)
-                    .clickable { navController.popBackStack() }
-            )
-            Spacer(Modifier.size(16.dp))
-            Text(
-                text = title,
-                color = Color.White,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold
-            )
-        }
+        AppTopBar(title = title, onBack = { navController.popBackStack() })
 
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
+                .navigationBarsPadding()
                 .padding(horizontal = 20.dp, vertical = 20.dp)
         ) {
             when (activityType) {
                 "appliedJobs" -> {
-                    val appliedJobs = CommunityPostStore.jobs.filter { CommunityPostStore.appliedJobIds.contains(it.id) }
+                    val appliedJobs = CommunityPostStore.homeJobs.filter { CommunityPostStore.appliedJobIds.contains(it.id) }
                     if (appliedJobs.isEmpty()) {
                         item { EmptyState("No job applications yet.") }
                     } else {
@@ -90,7 +69,7 @@ fun UserActivityListScreen(
                     }
                 }
                 "myJobs" -> {
-                    val myJobs = CommunityPostStore.jobs.filter { it.mine }
+                    val myJobs = CommunityPostStore.homeJobs.filter { it.mine }
                     if (myJobs.isEmpty()) {
                         item { EmptyState("You haven't posted any jobs.") }
                     } else {

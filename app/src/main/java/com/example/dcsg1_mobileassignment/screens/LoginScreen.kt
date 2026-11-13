@@ -50,6 +50,14 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.dcsg1_mobileassignment.communityhelp.screens.CommunityColors
 import com.example.dcsg1_mobileassignment.viewmodel.AuthViewModel
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.statusBarsPadding
+import com.example.dcsg1_mobileassignment.utils.InputLimits
+import com.example.dcsg1_mobileassignment.utils.limitTo
+import com.example.dcsg1_mobileassignment.ui.isLandscape
+import androidx.compose.foundation.layout.navigationBarsPadding
 
 @Composable
 fun LoginScreen(
@@ -62,11 +70,17 @@ fun LoginScreen(
     var passwordVisible by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
+    var isLoading by remember { mutableStateOf(false) }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(CommunityColors.Surface)
-            .padding(horizontal = 26.dp),
+            .statusBarsPadding()
+            .navigationBarsPadding()
+            .imePadding()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 26.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -76,7 +90,7 @@ fun LoginScreen(
             contentScale = ContentScale.Crop,
             modifier = Modifier
                 .fillMaxWidth(0.6f)
-                .height(140.dp)
+                .height(if (isLandscape()) 90.dp else 140.dp)
         )
 
         Spacer(Modifier.height(8.dp))
@@ -87,12 +101,12 @@ fun LoginScreen(
             fontSize = 12.sp
         )
 
-        Spacer(Modifier.height(42.dp))
+        Spacer(Modifier.height(if (isLandscape()) 20.dp else 42.dp))
 
         OutlinedTextField(
             value = email,
             onValueChange = {
-                email = it
+                email = it.trim().limitTo(InputLimits.EMAIL)
                 message = ""
             },
             leadingIcon = {
@@ -115,7 +129,7 @@ fun LoginScreen(
         OutlinedTextField(
             value = password,
             onValueChange = {
-                password = it
+                password = it.limitTo(InputLimits.PASSWORD)
                 message = ""
             },
             leadingIcon = {
@@ -150,9 +164,16 @@ fun LoginScreen(
         }
 
         Button(
+            enabled = !isLoading,
             onClick = {
+                if (email.isBlank() || password.isBlank()) {
+                    message = "Please enter your email and password."
+                    return@Button
+                }
+                isLoading = true
                 scope.launch {
-                    val error = authViewModel.login(email, password)
+                    val error = authViewModel.login(email.trim(), password)
+                    isLoading = false
                     if (error == null) {
                         navController.navigate("profile") {
                             popUpTo("login") {
@@ -171,7 +192,7 @@ fun LoginScreen(
                 .fillMaxWidth()
                 .height(50.dp)
         ) {
-            Text("Login", color = Color.White, fontWeight = FontWeight.Bold)
+            Text(if (isLoading) "Logging in..." else "Login", color = Color.White, fontWeight = FontWeight.Bold)
         }
 
         Spacer(Modifier.height(12.dp))

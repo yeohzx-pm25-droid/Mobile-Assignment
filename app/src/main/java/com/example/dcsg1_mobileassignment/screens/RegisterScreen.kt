@@ -52,6 +52,16 @@ import androidx.navigation.NavController
 import com.example.dcsg1_mobileassignment.communityhelp.screens.CommunityColors
 import com.example.dcsg1_mobileassignment.utils.Validation
 import com.example.dcsg1_mobileassignment.viewmodel.AuthViewModel
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.statusBarsPadding
+import com.example.dcsg1_mobileassignment.utils.InputLimits
+import com.example.dcsg1_mobileassignment.utils.limitTo
+import com.example.dcsg1_mobileassignment.utils.digitsOnly
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.foundation.layout.navigationBarsPadding
 
 @Composable
 fun RegisterScreen(
@@ -72,26 +82,24 @@ fun RegisterScreen(
     var phoneError by remember { mutableStateOf(false) }
     var passwordError by remember { mutableStateOf(false) }
 
+    var isLoading by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(CommunityColors.Surface)
+            .statusBarsPadding()
+            .navigationBarsPadding()
+            .imePadding()
             .padding(horizontal = 26.dp)
     ) {
-        Icon(
-            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-            contentDescription = "Back",
-            tint = CommunityColors.TextPrimary,
-            modifier = Modifier
-                .padding(top = 42.dp)
-                .size(24.dp)
-                .clickable { navController.popBackStack() }
-        )
-
+        // Scrollable so every field and the Register button can be reached in landscape.
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(top = 70.dp),
+                .verticalScroll(rememberScrollState())
+                .padding(top = 56.dp, bottom = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
@@ -109,12 +117,12 @@ fun RegisterScreen(
                 fontSize = 12.sp
             )
 
-            Spacer(Modifier.height(38.dp))
+            Spacer(Modifier.height(28.dp))
 
             OutlinedTextField(
                 value = fullName,
                 onValueChange = {
-                    fullName = it
+                    fullName = it.limitTo(InputLimits.NAME)
                     fullNameError = false
                 },
                 leadingIcon = {
@@ -139,7 +147,7 @@ fun RegisterScreen(
             OutlinedTextField(
                 value = email,
                 onValueChange = {
-                    email = it
+                    email = it.trim().limitTo(InputLimits.EMAIL)
                     emailError = false
                 },
                 leadingIcon = {
@@ -164,7 +172,7 @@ fun RegisterScreen(
             OutlinedTextField(
                 value = password,
                 onValueChange = {
-                    password = it
+                    password = it.limitTo(InputLimits.PASSWORD)
                     passwordError = false
                 },
                 leadingIcon = {
@@ -196,10 +204,8 @@ fun RegisterScreen(
             OutlinedTextField(
                 value = phone,
                 onValueChange = {
-                    if (it.length <= 11) {
-                        phone = it.filter { char -> char.isDigit() }
-                        phoneError = false
-                    }
+                    phone = it.digitsOnly(InputLimits.PHONE)
+                    phoneError = false
                 },
                 leadingIcon = {
                     Icon(Icons.Filled.Phone, contentDescription = null, tint = CommunityColors.TextMuted)
@@ -218,7 +224,7 @@ fun RegisterScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(Modifier.height(76.dp))
+            Spacer(Modifier.height(32.dp))
 
             Button(
                 onClick = {
@@ -249,16 +255,24 @@ fun RegisterScreen(
                             passwordError = true
                             showErrorDialog = true
                         }
+                        isLoading -> Unit
                         else -> {
+                            isLoading = true
                             scope.launch {
                                 val error = authViewModel.register(
-                                    fullName = fullName,
-                                    email = email,
+                                    fullName = fullName.trim(),
+                                    email = email.trim(),
                                     phone = phone,
                                     password = password
                                 )
+                                isLoading = false
 
                                 if (error == null) {
+                                    Toast.makeText(
+                                        context,
+                                        "Account created. Please check your email to verify, then log in.",
+                                        Toast.LENGTH_LONG
+                                    ).show()
                                     navController.navigate("login") {
                                         popUpTo("login") {
                                             inclusive = false
@@ -281,7 +295,7 @@ fun RegisterScreen(
                     .fillMaxWidth()
                     .height(50.dp)
             ) {
-                Text("Register", color = Color.White, fontWeight = FontWeight.Bold)
+                Text(if (isLoading) "Creating account..." else "Register", color = Color.White, fontWeight = FontWeight.Bold)
             }
 
             Spacer(Modifier.height(22.dp))
@@ -296,7 +310,8 @@ fun RegisterScreen(
                     color = CommunityColors.Green,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
-                    modifier = Modifier.clickable { navController.navigate("login") }
+                    // Go back to the existing Login screen instead of stacking a new one.
+                    modifier = Modifier.clickable { navController.popBackStack() }
                 )
             }
 
@@ -322,5 +337,15 @@ fun RegisterScreen(
                 )
             }
         }
+
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+            contentDescription = "Back",
+            tint = CommunityColors.TextPrimary,
+            modifier = Modifier
+                .padding(top = 16.dp)
+                .size(24.dp)
+                .clickable { navController.popBackStack() }
+        )
     }
 }

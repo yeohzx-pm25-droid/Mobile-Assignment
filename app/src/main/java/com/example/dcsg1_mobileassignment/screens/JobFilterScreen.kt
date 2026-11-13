@@ -44,7 +44,9 @@ import androidx.navigation.NavController
 import com.example.dcsg1_mobileassignment.communityhelp.data.CommunityData
 import com.example.dcsg1_mobileassignment.communityhelp.data.JOB_FILTER_ALL
 import com.example.dcsg1_mobileassignment.communityhelp.screens.CommunityColors
+import com.example.dcsg1_mobileassignment.ui.AppTopBar
 import com.example.dcsg1_mobileassignment.communityhelp.screens.navigateSingleTop
+import androidx.compose.foundation.layout.navigationBarsPadding
 
 @Composable
 fun JobFilterScreen(navController: NavController) {
@@ -69,6 +71,7 @@ fun JobFilterScreen(navController: NavController) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .navigationBarsPadding()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp, vertical = 20.dp)
         ) {
@@ -94,7 +97,7 @@ fun JobFilterScreen(navController: NavController) {
                 DropdownField(
                     label = "State",
                     value = state,
-                    options = listOf(JOB_FILTER_ALL) + CommunityData.malaysiaStates,
+                    options = listOf(JOB_FILTER_ALL) + CommunityData.filterStates,
                     onSelected = { state = it }
                 )
             }
@@ -117,7 +120,7 @@ fun JobFilterScreen(navController: NavController) {
                     CommunityPostStore.jobTypeFilter = jobType
                     CommunityPostStore.jobStateFilter = state
                     CommunityPostStore.jobSalaryUnitFilter = salaryUnit
-                    navController.navigateSingleTop("jobs")
+                    navController.popBackStack()
                 },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -133,37 +136,7 @@ fun JobFilterScreen(navController: NavController) {
 
 @Composable
 private fun FilterTopBar(onBack: () -> Unit, onReset: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(90.dp)
-            .background(CommunityColors.Green)
-            .padding(start = 18.dp, top = 26.dp, end = 18.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier
-                .width(46.dp)
-                .height(46.dp)
-                .clickable { onBack() },
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = "Back",
-                tint = Color.White,
-                modifier = Modifier.size(24.dp)
-            )
-        }
-
-        Text(
-            text = "Filter Jobs",
-            color = Color.White,
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.weight(1f)
-        )
-
+    AppTopBar(title = "Filter Jobs", onBack = onBack) {
         Text(
             text = "Reset",
             color = Color.White,
@@ -171,7 +144,7 @@ private fun FilterTopBar(onBack: () -> Unit, onReset: () -> Unit) {
             fontWeight = FontWeight.Bold,
             modifier = Modifier
                 .clickable { onReset() }
-                .padding(horizontal = 6.dp, vertical = 10.dp)
+                .padding(horizontal = 10.dp, vertical = 10.dp)
         )
     }
 }

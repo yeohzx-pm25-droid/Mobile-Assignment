@@ -44,7 +44,9 @@ import androidx.navigation.NavController
 import com.example.dcsg1_mobileassignment.communityhelp.data.CommunityData
 import com.example.dcsg1_mobileassignment.communityhelp.data.JOB_FILTER_ALL
 import com.example.dcsg1_mobileassignment.communityhelp.screens.CommunityColors
+import com.example.dcsg1_mobileassignment.ui.AppTopBar
 import com.example.dcsg1_mobileassignment.communityhelp.screens.navigateSingleTop
+import androidx.compose.foundation.layout.navigationBarsPadding
 
 @Composable
 fun DonationFilterScreen(navController: NavController) {
@@ -67,6 +69,7 @@ fun DonationFilterScreen(navController: NavController) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .navigationBarsPadding()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp, vertical = 20.dp)
         ) {
@@ -92,7 +95,7 @@ fun DonationFilterScreen(navController: NavController) {
                 DonationDropdownField(
                     label = "State",
                     value = state,
-                    options = listOf(JOB_FILTER_ALL) + CommunityData.malaysiaStates,
+                    options = listOf(JOB_FILTER_ALL) + CommunityData.filterStates,
                     onSelected = { state = it }
                 )
             }
@@ -103,7 +106,8 @@ fun DonationFilterScreen(navController: NavController) {
                 onClick = {
                     CommunityPostStore.donationCategoryFilter = category
                     CommunityPostStore.donationStateFilter = state
-                    navController.navigateSingleTop("donation")
+                    // Go back to the list instead of opening a second copy of it.
+                    navController.popBackStack()
                 },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -119,37 +123,7 @@ fun DonationFilterScreen(navController: NavController) {
 
 @Composable
 private fun DonationFilterTopBar(onBack: () -> Unit, onReset: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(90.dp)
-            .background(CommunityColors.Green)
-            .padding(start = 18.dp, top = 26.dp, end = 18.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier
-                .width(46.dp)
-                .height(46.dp)
-                .clickable { onBack() },
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = "Back",
-                tint = Color.White,
-                modifier = Modifier.size(24.dp)
-            )
-        }
-
-        Text(
-            text = "Filter Donations",
-            color = Color.White,
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.weight(1f)
-        )
-
+    AppTopBar(title = "Filter Donations", onBack = onBack) {
         Text(
             text = "Reset",
             color = Color.White,
@@ -157,7 +131,7 @@ private fun DonationFilterTopBar(onBack: () -> Unit, onReset: () -> Unit) {
             fontWeight = FontWeight.Bold,
             modifier = Modifier
                 .clickable { onReset() }
-                .padding(horizontal = 6.dp, vertical = 10.dp)
+                .padding(horizontal = 10.dp, vertical = 10.dp)
         )
     }
 }

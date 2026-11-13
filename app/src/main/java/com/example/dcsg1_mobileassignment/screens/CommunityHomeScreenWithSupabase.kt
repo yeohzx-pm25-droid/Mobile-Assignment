@@ -4,6 +4,8 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -14,12 +16,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
@@ -29,6 +36,7 @@ import com.example.dcsg1_mobileassignment.communityhelp.screens.CommunityColors
 import com.example.dcsg1_mobileassignment.communityhelp.screens.CommunityScaffold
 import com.example.dcsg1_mobileassignment.communityhelp.screens.navigateSingleTop
 import com.example.dcsg1_mobileassignment.viewmodel.AuthViewModel
+import kotlinx.coroutines.launch
 
 @Composable
 fun CommunityHomeScreenWithSupabase(
@@ -41,6 +49,9 @@ fun CommunityHomeScreenWithSupabase(
         ?.takeIf { it.isNotEmpty() }
         ?: "Student"
     val homeJobs = CommunityPostStore.homeJobs.take(2)
+    val scope = rememberCoroutineScope()
+    val isLoading = CommunityPostStore.isLoadingRemotePosts
+    val loadError = CommunityPostStore.lastRemotePostError
 
     CommunityScaffold(navController, BottomTab.Home) { innerPadding ->
         androidx.compose.foundation.lazy.LazyColumn(
@@ -55,7 +66,9 @@ fun CommunityHomeScreenWithSupabase(
                     text = "Hi, $name",
                     color = CommunityColors.TextPrimary,
                     fontSize = 22.sp,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     text = "Find help, work, and useful items nearby",
@@ -96,10 +109,46 @@ fun CommunityHomeScreenWithSupabase(
                 )
             }
 
+            if (homeJobs.isEmpty()) {
+                item {
+                    when {
+                        isLoading -> {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 24.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(color = CommunityColors.Green)
+                            }
+                        }
+
+                        loadError != null -> {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                                Text(loadError, color = CommunityColors.TextMuted, fontSize = 12.sp)
+                                TextButton(onClick = {
+                                    scope.launch { CommunityPostStore.reloadFromSupabase() }
+                                }) {
+                                    Text("Retry", color = CommunityColors.Green, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+
+                        else -> {
+                            Text(
+                                text = "No jobs posted yet. Tap + to post one.",
+                                color = CommunityColors.TextMuted,
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
+                }
+            }
+
             items(homeJobs.size) { index ->
                 val job = homeJobs[index]
                 HomeJobCard(job) {
-                    navController.navigate("jobDetail/${job.id}")
+                    navController.navigateSingleTop("jobDetail/${job.id}")
                 }
             }
         }
@@ -111,7 +160,7 @@ private fun HomeHeroCard() {
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .height(104.dp),
+            .heightIn(min = 90.dp),
         color = CommunityColors.Green,
         shape = RoundedCornerShape(12.dp)
     ) {
@@ -135,7 +184,7 @@ private fun HomeActionTile(
 ) {
     Surface(
         modifier = modifier
-            .height(112.dp)
+            .heightIn(min = 90.dp)
             .clickable { onClick() },
         color = Color.White,
         shape = RoundedCornerShape(8.dp),
@@ -174,7 +223,9 @@ private fun HomeJobCard(
                         text = job.title,
                         color = CommunityColors.TextPrimary,
                         fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
                     )
                     if (job.isUrgent) {
                         Spacer(Modifier.height(5.dp))
@@ -207,7 +258,13 @@ private fun HomeJobCard(
                 }
             }
             Spacer(Modifier.height(8.dp))
-            Text(job.location, color = CommunityColors.TextPrimary, fontSize = 11.sp)
+            Text(
+                text = job.location,
+                color = CommunityColors.TextPrimary,
+                fontSize = 11.sp,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
             Text(
                 text = "${job.category} - ${JobTimeFormatter.postedLine(job)}",
                 color = CommunityColors.TextMuted,

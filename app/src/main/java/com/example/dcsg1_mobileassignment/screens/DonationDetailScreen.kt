@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -54,15 +55,22 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.dcsg1_mobileassignment.communityhelp.model.DonationPost
 import com.example.dcsg1_mobileassignment.communityhelp.screens.CommunityColors
+import com.example.dcsg1_mobileassignment.ui.AppTopBar
+import com.example.dcsg1_mobileassignment.ui.isLandscape
+import com.example.dcsg1_mobileassignment.utils.InputLimits
 import com.example.dcsg1_mobileassignment.utils.Validation
+import com.example.dcsg1_mobileassignment.utils.digitsOnly
+import com.example.dcsg1_mobileassignment.utils.limitTo
 import com.example.dcsg1_mobileassignment.utils.openLocationInMaps
 import com.example.dcsg1_mobileassignment.viewmodel.AuthViewModel
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.layout.navigationBarsPadding
 
 @Composable
 fun DonationDetailScreen(
@@ -85,7 +93,10 @@ fun DonationDetailScreen(
     val fullyReserved = CommunityPostStore.isFullyReserved(donation)
     var pickedQuantity by remember(donation.id) { mutableIntStateOf(1) }
     var isDeleting by remember { mutableStateOf(false) }
+    var isReserving by remember { mutableStateOf(false) }
     var showReserveDialog by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    val maxImageHeight = if (isLandscape()) 220.dp else 420.dp
 
     Column(
         modifier = Modifier
@@ -97,6 +108,7 @@ fun DonationDetailScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .navigationBarsPadding()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp, vertical = 22.dp)
         ) {
@@ -104,7 +116,9 @@ fun DonationDetailScreen(
                 imageUrl = CommunityPostStore.imageUrlForDonation(donation.id),
                 fallbackTint = donation.tint,
                 imageRes = donation.imageRes,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = maxImageHeight),
                 cornerRadius = 12.dp,
                 contentScale = ContentScale.Fit,
                 matchImageAspectRatio = true
@@ -188,22 +202,7 @@ fun DonationDetailScreen(
 
                     Button(
                         onClick = {
-                            if (!isDeleting) {
-                                isDeleting = true
-                                coroutineScope.launch {
-                                    val result = CommunityPostStore.deleteDonationFromSupabase(donation.id)
-                                    isDeleting = false
-
-                                    result
-                                        .onSuccess {
-                                            Toast.makeText(context, "Donation deleted successfully", Toast.LENGTH_SHORT).show()
-                                            navController.popBackStack()
-                                        }
-                                        .onFailure { error ->
-                                            Toast.makeText(context, error.message ?: "Delete failed. Please try again.", Toast.LENGTH_SHORT).show()
-                                        }
-                                }
-                            }
+                            if (!isDeleting) showDeleteDialog = true
                         },
                         enabled = !isDeleting,
                         modifier = Modifier
@@ -279,14 +278,17 @@ fun DonationDetailScreen(
                         Spacer(Modifier.height(10.dp))
                         Button(
                             onClick = {
+                                if (isReserving) return@Button
+                                isReserving = true
                                 coroutineScope.launch {
                                     CommunityPostStore.unreserveDonationFromSupabase(donation.id)
                                         .onSuccess {
                                             Toast.makeText(context, "Reservation cancelled", Toast.LENGTH_SHORT).show()
                                         }
                                         .onFailure { error ->
-                                            Toast.makeText(context, error.message ?: "Delete failed. Please try again.", Toast.LENGTH_SHORT).show()
+                                            Toast.makeText(context, error.message ?: "Unable to cancel reservation. Please try again.", Toast.LENGTH_SHORT).show()
                                         }
+                                    isReserving = false
                                 }
                             },
                             modifier = Modifier
@@ -335,7 +337,8 @@ fun DonationDetailScreen(
                         }
 
                         Button(
-                            onClick = { showReserveDialog = true },
+                            onClick = { if (!isReserving) showReserveDialog = true },
+                            enabled = !isReserving,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(58.dp),
@@ -365,6 +368,7 @@ fun DonationDetailScreen(
             onSubmit = { name, phone, age ->
                 showReserveDialog = false
                 val amount = if (donation.quantity > 1) pickedQuantity else 1
+                isReserving = true
                 coroutineScope.launch {
                     CommunityPostStore.reserveDonationToSupabase(
                         donationId = donation.id,
@@ -382,8 +386,43 @@ fun DonationDetailScreen(
                             }
                         }
                         .onFailure { error ->
-                            Toast.makeText(context, error.message ?: "Delete failed. Please try again.", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, error.message ?: "Unable to reserve. Please try again.", Toast.LENGTH_SHORT).show()
                         }
+                    isReserving = false
+                }
+            }
+        )
+    }
+
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Delete Donation?") },
+            text = { Text("This item and its reservations will be removed. This cannot be undone.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDeleteDialog = false
+                    isDeleting = true
+                    coroutineScope.launch {
+                        val result = CommunityPostStore.deleteDonationFromSupabase(donation.id)
+                        isDeleting = false
+
+                        result
+                            .onSuccess {
+                                Toast.makeText(context, "Donation deleted successfully", Toast.LENGTH_SHORT).show()
+                                navController.popBackStack()
+                            }
+                            .onFailure { error ->
+                                Toast.makeText(context, error.message ?: "Delete failed. Please try again.", Toast.LENGTH_SHORT).show()
+                            }
+                    }
+                }) {
+                    Text("Delete", color = Color(0xFFE53935), fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Cancel", color = CommunityColors.TextMuted)
                 }
             }
         )
@@ -397,8 +436,8 @@ private fun ReserveDonationDialog(
     onDismiss: () -> Unit,
     onSubmit: (name: String, phone: String, age: Int) -> Unit
 ) {
-    var name by remember { mutableStateOf(initialName) }
-    var phone by remember { mutableStateOf(initialPhone) }
+    var name by remember { mutableStateOf(initialName.limitTo(InputLimits.NAME)) }
+    var phone by remember { mutableStateOf(initialPhone.digitsOnly(InputLimits.PHONE)) }
     var age by remember { mutableStateOf("") }
     var error by remember { mutableStateOf("") }
 
@@ -408,7 +447,7 @@ private fun ReserveDonationDialog(
             Text("Your Details", fontWeight = FontWeight.Bold, color = CommunityColors.TextPrimary)
         },
         text = {
-            Column {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
                 Text(
                     text = "The donor will see these details if they accept your reservation.",
                     color = CommunityColors.TextMuted,
@@ -417,7 +456,7 @@ private fun ReserveDonationDialog(
                 Spacer(Modifier.height(16.dp))
                 OutlinedTextField(
                     value = name,
-                    onValueChange = { name = it; error = "" },
+                    onValueChange = { name = it.limitTo(InputLimits.NAME); error = "" },
                     label = { Text("Full Name") },
                     singleLine = true,
                     colors = OutlinedTextFieldDefaults.colors(
@@ -429,8 +468,9 @@ private fun ReserveDonationDialog(
                 Spacer(Modifier.height(10.dp))
                 OutlinedTextField(
                     value = phone,
-                    onValueChange = { phone = it; error = "" },
+                    onValueChange = { phone = it.digitsOnly(InputLimits.PHONE); error = "" },
                     label = { Text("Phone Number") },
+                    placeholder = { Text("01XXXXXXXX") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Phone
@@ -444,7 +484,7 @@ private fun ReserveDonationDialog(
                 Spacer(Modifier.height(10.dp))
                 OutlinedTextField(
                     value = age,
-                    onValueChange = { age = it.filter { ch -> ch.isDigit() }; error = "" },
+                    onValueChange = { age = it.digitsOnly(InputLimits.AGE); error = "" },
                     label = { Text("Age") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(
@@ -485,36 +525,7 @@ private fun ReserveDonationDialog(
 
 @Composable
 private fun DonationDetailTopBar(onBack: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(90.dp)
-            .background(CommunityColors.Green)
-            .padding(start = 18.dp, top = 26.dp, end = 18.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier
-                .size(46.dp)
-                .clickable { onBack() },
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = "Back",
-                tint = Color.White,
-                modifier = Modifier.size(24.dp)
-            )
-        }
-
-        Text(
-            text = "Item Details",
-            color = Color.White,
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.weight(1f)
-        )
-    }
+    AppTopBar(title = "Item Details", onBack = onBack)
 }
 
 @Composable
@@ -653,7 +664,9 @@ private fun MapLocationCard(
                     text = location,
                     color = CommunityColors.TextPrimary,
                     fontSize = 12.sp,
-                    textDecoration = TextDecoration.Underline
+                    textDecoration = TextDecoration.Underline,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }

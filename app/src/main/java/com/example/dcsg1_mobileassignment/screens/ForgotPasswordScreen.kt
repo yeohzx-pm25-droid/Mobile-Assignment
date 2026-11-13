@@ -42,6 +42,13 @@ import com.example.dcsg1_mobileassignment.communityhelp.screens.CommunityColors
 import com.example.dcsg1_mobileassignment.utils.Validation
 import com.example.dcsg1_mobileassignment.viewmodel.AuthViewModel
 import com.example.dcsg1_mobileassignment.viewmodel.PasswordResetResult
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.statusBarsPadding
+import com.example.dcsg1_mobileassignment.utils.InputLimits
+import com.example.dcsg1_mobileassignment.utils.limitTo
+import androidx.compose.foundation.layout.navigationBarsPadding
 
 @Composable
 fun ForgotPasswordScreen(
@@ -57,20 +64,17 @@ fun ForgotPasswordScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(CommunityColors.Surface)
+            .statusBarsPadding()
+            .navigationBarsPadding()
+            .imePadding()
             .padding(horizontal = 26.dp)
     ) {
-        Icon(
-            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-            contentDescription = "Back",
-            tint = CommunityColors.TextPrimary,
-            modifier = Modifier
-                .padding(top = 42.dp)
-                .size(24.dp)
-                .clickable { navController.popBackStack() }
-        )
-
+        // Scrollable so the form still fits in landscape / with the keyboard open.
         Column(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(top = 56.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -94,7 +98,7 @@ fun ForgotPasswordScreen(
             OutlinedTextField(
                 value = email,
                 onValueChange = {
-                    email = it
+                    email = it.trim().limitTo(InputLimits.EMAIL)
                     message = ""
                     sent = false
                 },
@@ -123,7 +127,7 @@ fun ForgotPasswordScreen(
                             !Validation.isEmailValid(email) ->
                                 message = "Invalid email format (e.g. name@domain.com)."
                             else -> {
-                                when (authViewModel.sendPasswordResetEmail(email)) {
+                                when (authViewModel.sendPasswordResetEmail(email.trim())) {
                                     is PasswordResetResult.Success -> {
                                         sent = true
                                         message = "Reset link sent. Check your email and tap the link to set a new password."
@@ -164,5 +168,16 @@ fun ForgotPasswordScreen(
                 )
             }
         }
+
+        // Drawn after the scrollable column so it stays on top and can still be tapped.
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+            contentDescription = "Back",
+            tint = CommunityColors.TextPrimary,
+            modifier = Modifier
+                .padding(top = 16.dp)
+                .size(24.dp)
+                .clickable { navController.popBackStack() }
+        )
     }
 }

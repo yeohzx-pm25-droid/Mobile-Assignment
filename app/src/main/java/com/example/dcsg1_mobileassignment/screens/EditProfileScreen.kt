@@ -44,6 +44,16 @@ import com.example.dcsg1_mobileassignment.communityhelp.screens.CommunityColors
 import com.example.dcsg1_mobileassignment.utils.Validation
 import com.example.dcsg1_mobileassignment.viewmodel.AuthViewModel
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.statusBarsPadding
+import com.example.dcsg1_mobileassignment.utils.InputLimits
+import com.example.dcsg1_mobileassignment.utils.limitTo
+import com.example.dcsg1_mobileassignment.utils.digitsOnly
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.foundation.layout.navigationBarsPadding
 
 @Composable
 fun EditProfileScreen(
@@ -64,8 +74,10 @@ fun EditProfileScreen(
         return
     }
 
-    var fullName by remember { mutableStateOf(user.fullName) }
-    var phone by remember { mutableStateOf(user.phone) }
+    var fullName by remember { mutableStateOf(user.fullName.limitTo(InputLimits.NAME)) }
+    var phone by remember { mutableStateOf(user.phone.digitsOnly(InputLimits.PHONE)) }
+    var isSaving by remember { mutableStateOf(false) }
+    val context = LocalContext.current
     var message by remember { mutableStateOf("") }
     var showErrorDialog by remember { mutableStateOf(false) }
 
@@ -77,20 +89,17 @@ fun EditProfileScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(CommunityColors.Surface)
+            .statusBarsPadding()
+            .navigationBarsPadding()
+            .imePadding()
             .padding(horizontal = 26.dp)
     ) {
-        Icon(
-            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-            contentDescription = "Back",
-            tint = CommunityColors.TextPrimary,
-            modifier = Modifier
-                .padding(top = 42.dp)
-                .size(24.dp)
-                .clickable { navController.popBackStack() }
-        )
 
         Column(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(top = 56.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -114,7 +123,7 @@ fun EditProfileScreen(
             OutlinedTextField(
                 value = fullName,
                 onValueChange = {
-                    fullName = it
+                    fullName = it.limitTo(InputLimits.NAME)
                     message = ""
                     fullNameError = false
                 },
@@ -140,10 +149,8 @@ fun EditProfileScreen(
             OutlinedTextField(
                 value = phone,
                 onValueChange = {
-                    if (it.length <= 11) {
-                        phone = it.filter { char -> char.isDigit() }
-                        phoneError = false
-                    }
+                    phone = it.digitsOnly(InputLimits.PHONE)
+                    phoneError = false
                     message = ""
                 },
                 leadingIcon = {
@@ -181,15 +188,19 @@ fun EditProfileScreen(
                             phoneError = true
                             showErrorDialog = true
                         }
+                        isSaving -> Unit
                         else -> {
+                            isSaving = true
                             scope.launch {
-                                val error = authViewModel.updateProfile(fullName, phone)
+                                val error = authViewModel.updateProfile(fullName.trim(), phone)
                                 if (error == null) {
+                                    Toast.makeText(context, "Profile updated", Toast.LENGTH_SHORT).show()
                                     navController.popBackStack()
                                 } else {
                                     message = error
                                     showErrorDialog = true
                                 }
+                                isSaving = false
                             }
                         }
                     }
@@ -229,5 +240,16 @@ fun EditProfileScreen(
                 )
             }
         }
+
+
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+            contentDescription = "Back",
+            tint = CommunityColors.TextPrimary,
+            modifier = Modifier
+                .padding(top = 16.dp)
+                .size(24.dp)
+                .clickable { navController.popBackStack() }
+        )
     }
 }

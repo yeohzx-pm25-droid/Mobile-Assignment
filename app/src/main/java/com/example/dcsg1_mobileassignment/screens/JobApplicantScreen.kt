@@ -35,11 +35,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.dcsg1_mobileassignment.communityhelp.screens.CommunityColors
+import com.example.dcsg1_mobileassignment.ui.AppTopBar
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.layout.navigationBarsPadding
 
 @Composable
 fun JobApplicantsScreen(
@@ -53,6 +56,8 @@ fun JobApplicantsScreen(
     var applicants by remember { mutableStateOf<List<JobApplicant>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var loadError by remember { mutableStateOf(false) }
+    // IDs currently being accepted/rejected, so a double tap does not send two requests.
+    var updatingIds by remember { mutableStateOf(setOf<String>()) }
 
     LaunchedEffect(jobId) {
         isLoading = true
@@ -68,36 +73,10 @@ fun JobApplicantsScreen(
             .fillMaxSize()
             .background(CommunityColors.Surface)
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(90.dp)
-                .background(CommunityColors.Green)
-                .padding(start = 18.dp, top = 26.dp, end = 18.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(46.dp)
-                    .clickable { navController.popBackStack() },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Back",
-                    tint = Color.White,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-
-            Text(
-                text = job?.title?.let { "Applicants - $it" } ?: "Applicants",
-                color = Color.White,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.weight(1f)
-            )
-        }
+        AppTopBar(
+            title = job?.title?.let { "Applicants - $it" } ?: "Applicants",
+            onBack = { navController.popBackStack() }
+        )
 
         when {
             isLoading -> {
@@ -122,6 +101,7 @@ fun JobApplicantsScreen(
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
+                        .navigationBarsPadding()
                         .padding(horizontal = 20.dp, vertical = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
@@ -129,6 +109,8 @@ fun JobApplicantsScreen(
                         ApplicantCard(
                             applicant = applicant,
                             onAccept = {
+                                if (applicant.id in updatingIds) return@ApplicantCard
+                                updatingIds = updatingIds + applicant.id
                                 coroutineScope.launch {
                                     CommunityPostStore.setApplicationStatus(applicant.id, "accepted")
                                         .onSuccess {
@@ -139,9 +121,12 @@ fun JobApplicantsScreen(
                                         .onFailure {
                                             Toast.makeText(context, "Failed to update. Please try again.", Toast.LENGTH_SHORT).show()
                                         }
+                                    updatingIds = updatingIds - applicant.id
                                 }
                             },
                             onReject = {
+                                if (applicant.id in updatingIds) return@ApplicantCard
+                                updatingIds = updatingIds + applicant.id
                                 coroutineScope.launch {
                                     CommunityPostStore.setApplicationStatus(applicant.id, "rejected")
                                         .onSuccess {
@@ -152,6 +137,7 @@ fun JobApplicantsScreen(
                                         .onFailure {
                                             Toast.makeText(context, "Failed to update. Please try again.", Toast.LENGTH_SHORT).show()
                                         }
+                                    updatingIds = updatingIds - applicant.id
                                 }
                             }
                         )
@@ -183,7 +169,12 @@ private fun ApplicantCard(
                     text = applicant.applicantName,
                     color = CommunityColors.TextPrimary,
                     fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(end = 8.dp)
                 )
 
                 StatusBadge(applicant.status)

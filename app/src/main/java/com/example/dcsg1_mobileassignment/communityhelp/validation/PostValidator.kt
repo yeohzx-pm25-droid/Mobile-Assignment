@@ -12,7 +12,9 @@ import java.util.Locale
 object PostValidator {
 
     fun isValidPaymentAmount(payment: String): Boolean {
-        return payment.isNotBlank() && payment.all { it.isDigit() }
+        return payment.isNotBlank() &&
+                payment.all { it.isDigit() } &&
+                (payment.toLongOrNull() ?: 0L) > 0L
     }
 
     fun isValidLocationWithState(location: String): Boolean {

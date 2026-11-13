@@ -8,6 +8,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.MediaStore
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
@@ -24,6 +25,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -64,15 +66,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.dcsg1_mobileassignment.communityhelp.data.CommunityData
-import com.example.dcsg1_mobileassignment.communityhelp.model.DonationPost
-import com.example.dcsg1_mobileassignment.communityhelp.model.JobPost
 import com.example.dcsg1_mobileassignment.communityhelp.model.PostType
 import com.example.dcsg1_mobileassignment.communityhelp.screens.CommunityColors
 import com.example.dcsg1_mobileassignment.communityhelp.screens.navigateSingleTop
 import com.example.dcsg1_mobileassignment.communityhelp.validation.LocationValidator
 import com.example.dcsg1_mobileassignment.communityhelp.validation.PostValidator
+import com.example.dcsg1_mobileassignment.ui.AppTopBar
+import com.example.dcsg1_mobileassignment.ui.CharacterCounter
+import com.example.dcsg1_mobileassignment.utils.InputLimits
+import com.example.dcsg1_mobileassignment.utils.digitsOnly
+import com.example.dcsg1_mobileassignment.utils.limitTo
 import kotlinx.coroutines.launch
 import java.io.File
+import androidx.compose.foundation.layout.navigationBarsPadding
 
 @Composable
 fun CreatePostScreen(
@@ -97,7 +103,12 @@ fun CreatePostScreen(
     var jobCategory by remember { mutableStateOf(existingJob?.category ?: CommunityData.jobCategories.first()) }
     var jobLocation by remember { mutableStateOf(existingJob?.location ?: "") }
 
-    val initialPayment = existingJob?.payment?.split(" ")?.firstOrNull()?.removePrefix("RM") ?: ""
+    val initialPayment = existingJob?.payment
+        ?.split(" ")?.firstOrNull()
+        ?.removePrefix("RM")
+        ?.substringBefore(".")
+        ?.digitsOnly(InputLimits.PAYMENT_DIGITS)
+        ?: ""
     val initialUnit = existingJob?.payment?.split("/")?.lastOrNull()?.trim()?.lowercase()?.replaceFirstChar { it.uppercase() } ?: "Day"
 
     var jobPayment by remember { mutableStateOf(if (existingJob?.payment == "Negotiable") "" else initialPayment) }
@@ -193,8 +204,8 @@ fun CreatePostScreen(
                 donationQuantity != "1"
     }
 
-    fun goHome() {
-        navController.navigateSingleTop("home")
+    BackHandler(enabled = hasInput && !isEditing && !isPosting) {
+        leaveDialog = true
     }
 
     Column(
@@ -216,6 +227,8 @@ fun CreatePostScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .navigationBarsPadding()
+                .imePadding()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp, vertical = 18.dp)
         ) {
@@ -226,20 +239,27 @@ fun CreatePostScreen(
 
             if (postType == PostType.Job) {
                 LabeledField("Title") {
-                    InputField(jobTitle, { jobTitle = it }, "e.g. Cashier, Cleaner, Tutor")
+                    InputField(jobTitle, { jobTitle = it }, "e.g. Cashier, Cleaner, Tutor", maxLength = InputLimits.JOB_TITLE)
                 }
                 CategoryDropdown("Category", jobCategory, CommunityData.jobCategories) {
                     jobCategory = it
                 }
                 LabeledField("Location") {
-                    InputField(jobLocation, { jobLocation = it }, "e.g. 77 Lorong Lembah Permai 3, Tanjong Bungah, Pulau Pinang.")
+                    InputField(
+                        jobLocation,
+                        { jobLocation = it },
+                        "e.g. 77 Lorong Lembah Permai 3, Tanjong Bungah, Pulau Pinang.",
+                        lines = 2,
+                        maxLength = InputLimits.LOCATION
+                    )
                 }
                 LabeledField("Salary / Payment") {
                     OutlinedTextField(
                         value = if (jobPaymentUnit == "Negotiable") "" else jobPayment,
-                        onValueChange = { jobPayment = it.filter { char -> char.isDigit() } },
+                        onValueChange = { jobPayment = it.digitsOnly(InputLimits.PAYMENT_DIGITS) },
                         enabled = jobPaymentUnit != "Negotiable",
                         placeholder = { Text(if (jobPaymentUnit == "Negotiable") "Negotiable" else "e.g. 50") },
+                        prefix = { if (jobPaymentUnit != "Negotiable") Text("RM ") },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         colors = OutlinedTextFieldDefaults.colors(
@@ -258,7 +278,13 @@ fun CreatePostScreen(
                 }
                 Spacer(Modifier.height(14.dp))
                 LabeledField("Description") {
-                    InputField(jobDescription, { jobDescription = it }, "Tell more about the job...", lines = 3)
+                    InputField(
+                        jobDescription,
+                        { jobDescription = it },
+                        "Tell more about the job...",
+                        lines = 3,
+                        maxLength = InputLimits.DESCRIPTION
+                    )
                 }
                 UrgentJobToggle(
                     isUrgent = jobIsUrgent,
@@ -280,7 +306,7 @@ fun CreatePostScreen(
                         return@PrimaryButton
                     }
                     if (jobPaymentUnit != "Negotiable" && !PostValidator.isValidPaymentAmount(jobPayment)) {
-                        showAlert("Invalid Payment", "Please enter numbers only. Example: 50.")
+                        showAlert("Invalid Payment", "Please enter an amount greater than 0 (numbers only). Example: 50.")
                         return@PrimaryButton
                     }
 
@@ -292,23 +318,28 @@ fun CreatePostScreen(
                             return@launch
                         }
 
-                        val job = JobPost(
-                            id = existingJob?.id ?: System.currentTimeMillis().toString(),
-                            title = jobTitle.trim(),
-                            category = jobCategory,
-                            location = jobLocation.trim(),
-                            payment = PostValidator.buildPayment(jobPayment, jobPaymentUnit),
-                            description = jobDescription.trim(),
-                            posted = existingJob?.posted ?: "Posted just now",
-                            mine = true,
-                            isUrgent = jobIsUrgent
-                        )
-
-                        if (isEditing) {
-                            CommunityPostStore.updateJob(job)
+                        if (isEditing && existingJob != null) {
+                            val result = CommunityPostStore.updateJobInSupabase(
+                                jobId = existingJob.id,
+                                title = jobTitle,
+                                category = jobCategory,
+                                location = jobLocation,
+                                payment = jobPayment,
+                                paymentUnit = jobPaymentUnit,
+                                description = jobDescription,
+                                isUrgent = jobIsUrgent
+                            )
                             isPosting = false
-                            Toast.makeText(context, "Job updated successfully", Toast.LENGTH_SHORT).show()
-                            navController.popBackStack()
+
+                            result.onSuccess {
+                                Toast.makeText(context, "Job updated successfully", Toast.LENGTH_SHORT).show()
+                                navController.popBackStack()
+                            }.onFailure { error ->
+                                showAlert("Update Failed", error.message ?: "Unable to update job. Please try again.")
+                            }
+                        } else if (isEditing) {
+                            isPosting = false
+                            showAlert("Job Not Found", "This job no longer exists. It may have been deleted.")
                         } else {
                             val result = CommunityPostStore.addJobToSupabase(
                                 title = jobTitle,
@@ -332,7 +363,7 @@ fun CreatePostScreen(
                 }
             } else {
                 LabeledField("Item Name") {
-                    InputField(donationName, { donationName = it }, "e.g. Rice, Clothes, Shampoo")
+                    InputField(donationName, { donationName = it }, "e.g. Rice, Clothes, Shampoo", maxLength = InputLimits.ITEM_NAME)
                 }
                 CategoryDropdown("Item Category", donationCategory, CommunityData.donationCategories) {
                     donationCategory = it
@@ -340,15 +371,27 @@ fun CreatePostScreen(
                 LabeledField("Quantity") {
                     InputField(
                         donationQuantity,
-                        { new -> if (new.length <= 4 && new.all { it.isDigit() }) donationQuantity = new },
+                        { new -> donationQuantity = new.digitsOnly(InputLimits.QUANTITY_DIGITS) },
                         "e.g. 10"
                     )
                 }
                 LabeledField("Pickup Location") {
-                    InputField(donationLocation, { donationLocation = it }, "Please Enter a Full Malaysia Address.")
+                    InputField(
+                        donationLocation,
+                        { donationLocation = it },
+                        "Please Enter a Full Malaysia Address.",
+                        lines = 2,
+                        maxLength = InputLimits.LOCATION
+                    )
                 }
                 LabeledField("Description") {
-                    InputField(donationDescription, { donationDescription = it }, "Tell more about the item...", lines = 4)
+                    InputField(
+                        donationDescription,
+                        { donationDescription = it },
+                        "Tell more about the item...",
+                        lines = 4,
+                        maxLength = InputLimits.DESCRIPTION
+                    )
                 }
                 if (!isEditing) {
                     ImageUploadField(
@@ -373,6 +416,16 @@ fun CreatePostScreen(
                         showAlert("Invalid Quantity", "Please enter how many of this item you're giving away (at least 1).")
                         return@PrimaryButton
                     }
+                    if (existingDonation != null) {
+                        val alreadyReserved = CommunityPostStore.totalReservedQuantityFor(existingDonation.id)
+                        if (parsedQuantity < alreadyReserved) {
+                            showAlert(
+                                "Invalid Quantity",
+                                "$alreadyReserved item(s) are already reserved. The quantity cannot be lower than that."
+                            )
+                            return@PrimaryButton
+                        }
+                    }
                     if (!isEditing && donationPhotoUri == null) {
                         showAlert("Photo Required", "Please choose one item photo before posting the donation.")
                         return@PrimaryButton
@@ -391,23 +444,26 @@ fun CreatePostScreen(
                             return@launch
                         }
 
-                        val donation = DonationPost(
-                            id = existingDonation?.id ?: System.currentTimeMillis().toString(),
-                            title = donationName.trim(),
-                            category = donationCategory,
-                            location = donationLocation.trim(),
-                            description = donationDescription.trim(),
-                            posted = existingDonation?.posted ?: "Posted just now",
-                            tint = PostValidator.tintForCategory(donationCategory),
-                            quantity = parsedQuantity,
-                            mine = true
-                        )
-
-                        if (isEditing) {
-                            CommunityPostStore.updateDonation(donation)
+                        if (isEditing && existingDonation != null) {
+                            val result = CommunityPostStore.updateDonationInSupabase(
+                                donationId = existingDonation.id,
+                                itemName = donationName,
+                                itemCategory = donationCategory,
+                                pickupLocation = donationLocation,
+                                description = donationDescription,
+                                quantity = parsedQuantity
+                            )
                             isPosting = false
-                            Toast.makeText(context, "Donation updated successfully", Toast.LENGTH_SHORT).show()
-                            navController.popBackStack()
+
+                            result.onSuccess {
+                                Toast.makeText(context, "Donation updated successfully", Toast.LENGTH_SHORT).show()
+                                navController.popBackStack()
+                            }.onFailure { error ->
+                                showAlert("Update Failed", error.message ?: "Unable to update donation. Please try again.")
+                            }
+                        } else if (isEditing) {
+                            isPosting = false
+                            showAlert("Item Not Found", "This donation no longer exists. It may have been deleted.")
                         } else {
                             if (selectedPhotoUri == null) {
                                 isPosting = false
@@ -447,7 +503,7 @@ fun CreatePostScreen(
             confirmButton = {
                 TextButton(onClick = {
                     leaveDialog = false
-                    goHome()
+                    navController.popBackStack()
                 }) {
                     Text("Leave")
                 }
@@ -599,30 +655,7 @@ private fun Context.createDonationPhotoUri(): Uri {
 
 @Composable
 private fun TopBar(title: String, onBack: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(96.dp)
-            .background(CommunityColors.Green)
-            .padding(start = 18.dp, top = 26.dp, end = 18.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier
-                .width(50.dp)
-                .height(70.dp)
-                .clickable { onBack() },
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = "Back",
-                tint = Color.White,
-                modifier = Modifier.size(26.dp)
-            )
-        }
-        Text(title, color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.Bold)
-    }
+    AppTopBar(title = title, onBack = onBack)
 }
 
 @Composable
@@ -673,13 +706,29 @@ private fun LabeledField(label: String, content: @Composable () -> Unit) {
 }
 
 @Composable
-private fun InputField(value: String, onValueChange: (String) -> Unit, hint: String, lines: Int = 1) {
+private fun InputField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    hint: String,
+    lines: Int = 1,
+    maxLength: Int? = null
+) {
+    val counter: (@Composable () -> Unit)? = if (maxLength != null) {
+        { CharacterCounter(value.length, maxLength) }
+    } else {
+        null
+    }
+
     OutlinedTextField(
         value = value,
-        onValueChange = onValueChange,
+        onValueChange = { newValue ->
+            onValueChange(if (maxLength != null) newValue.limitTo(maxLength) else newValue)
+        },
         placeholder = { Text(hint) },
         singleLine = lines == 1,
         minLines = lines,
+        maxLines = if (lines == 1) 1 else lines + 3,
+        supportingText = counter,
         colors = OutlinedTextFieldDefaults.colors(
             focusedContainerColor = Color.White,
             unfocusedContainerColor = Color.White,

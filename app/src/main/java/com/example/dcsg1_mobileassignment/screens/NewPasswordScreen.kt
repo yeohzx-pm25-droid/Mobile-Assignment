@@ -44,6 +44,13 @@ import com.example.dcsg1_mobileassignment.communityhelp.screens.navigateSingleTo
 import com.example.dcsg1_mobileassignment.utils.Validation
 import com.example.dcsg1_mobileassignment.viewmodel.AuthViewModel
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.statusBarsPadding
+import com.example.dcsg1_mobileassignment.utils.InputLimits
+import com.example.dcsg1_mobileassignment.utils.limitTo
+import androidx.compose.foundation.layout.navigationBarsPadding
 
 @Composable
 fun NewPasswordScreen(
@@ -60,10 +67,16 @@ fun NewPasswordScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(CommunityColors.Surface)
+            .statusBarsPadding()
+            .navigationBarsPadding()
+            .imePadding()
             .padding(horizontal = 26.dp)
     ) {
         Column(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(top = 56.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -87,7 +100,7 @@ fun NewPasswordScreen(
             OutlinedTextField(
                 value = newPassword,
                 onValueChange = {
-                    newPassword = it
+                    newPassword = it.limitTo(InputLimits.PASSWORD)
                     message = ""
                 },
                 leadingIcon = {
@@ -117,7 +130,7 @@ fun NewPasswordScreen(
             OutlinedTextField(
                 value = confirmPassword,
                 onValueChange = {
-                    confirmPassword = it
+                    confirmPassword = it.limitTo(InputLimits.PASSWORD)
                     message = ""
                 },
                 leadingIcon = {
@@ -149,7 +162,10 @@ fun NewPasswordScreen(
                             else -> {
                                 val success = authViewModel.updateNewPassword(newPassword)
                                 if (success) {
-                                    navController.navigateSingleTop("login")
+                                    navController.navigate("login") {
+                                        popUpTo(0) { inclusive = true }
+                                        launchSingleTop = true
+                                    }
                                 } else {
                                     message = "Failed to update password. Please request a new reset link."
                                 }

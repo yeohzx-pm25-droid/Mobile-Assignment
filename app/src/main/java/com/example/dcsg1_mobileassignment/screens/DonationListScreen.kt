@@ -44,6 +44,11 @@ import com.example.dcsg1_mobileassignment.communityhelp.model.DonationPost
 import com.example.dcsg1_mobileassignment.communityhelp.screens.CommunityColors
 import com.example.dcsg1_mobileassignment.communityhelp.screens.CommunityScaffold
 import com.example.dcsg1_mobileassignment.communityhelp.screens.navigateSingleTop
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.ui.text.style.TextOverflow
+import com.example.dcsg1_mobileassignment.utils.InputLimits
+import com.example.dcsg1_mobileassignment.utils.limitTo
 
 private val quickDonationCategories = listOf(JOB_FILTER_ALL) + CommunityData.donationCategories
 
@@ -76,7 +81,7 @@ fun DonationListScreen(navController: NavController) {
 
                 DonationSearchBar(
                     query = CommunityPostStore.donationSearchQuery,
-                    onQueryChange = { CommunityPostStore.donationSearchQuery = it },
+                    onQueryChange = { CommunityPostStore.donationSearchQuery = it.limitTo(InputLimits.SEARCH) },
                     activeFilterCount = CommunityPostStore.activeDonationFilterCount,
                     onFilterClick = { navController.navigateSingleTop("donationFilter") }
                 )
@@ -132,7 +137,7 @@ private fun DonationSearchBar(
             ),
             modifier = Modifier
                 .weight(1f)
-                .height(52.dp)
+                .heightIn(min = 52.dp)
         )
 
         Spacer(Modifier.width(10.dp))
@@ -249,14 +254,18 @@ fun DonationItemCard(
                     color = CommunityColors.TextPrimary,
                     fontSize = 14.sp,
                     lineHeight = 19.sp,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
                     text = donation.location,
                     color = CommunityColors.TextPrimary,
                     fontSize = 11.sp,
-                    lineHeight = 16.sp
+                    lineHeight = 16.sp,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     text = "${donation.category} - ${donation.posted}",
@@ -296,15 +305,17 @@ private fun StatusTag(fullyReserved: Boolean, remaining: Int, totalQuantity: Int
         color = Color.Transparent,
         shape = RoundedCornerShape(10.dp),
         border = BorderStroke(1.dp, color),
-        modifier = Modifier.width(57.dp)
+        modifier = Modifier.widthIn(min = 57.dp)
     ) {
         Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(vertical = 3.dp)) {
             Text(
                 text = label,
                 color = color,
                 fontSize = 11.sp,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                modifier = Modifier.padding(horizontal = 6.dp)
             )
         }
     }
-}   
+}

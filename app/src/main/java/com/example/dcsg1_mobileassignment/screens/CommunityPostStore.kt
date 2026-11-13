@@ -57,17 +57,24 @@ object CommunityPostStore {
         get() = listOf(jobTypeFilter, jobStateFilter, jobSalaryUnitFilter)
             .count { it != JOB_FILTER_ALL }
 
+    // Urgent jobs first, then newest first. Same order as the Home feed,
+    // so a job pinned on Home is also at the top of the Jobs list.
+    private val jobOrder: Comparator<JobPost> =
+        compareByDescending<JobPost> { it.isUrgent }
+            .thenByDescending { createdAtMillisForJob(it.id) ?: it.id.toLongOrNull() ?: 0L }
+
     val filteredJobs: List<JobPost>
         get() = jobs.filter { job ->
-            val matchesSearch = jobSearchQuery.isBlank() ||
-                    job.title.contains(jobSearchQuery, ignoreCase = true) ||
-                    job.location.contains(jobSearchQuery, ignoreCase = true) ||
-                    job.category.contains(jobSearchQuery, ignoreCase = true)
+            val query = jobSearchQuery.trim()
+            val matchesSearch = query.isBlank() ||
+                    job.title.contains(query, ignoreCase = true) ||
+                    job.location.contains(query, ignoreCase = true) ||
+                    job.category.contains(query, ignoreCase = true)
 
             val matchesType = jobTypeFilter == JOB_FILTER_ALL || job.category == jobTypeFilter
 
             val matchesState = jobStateFilter == JOB_FILTER_ALL ||
-                    job.location.contains(jobStateFilter, ignoreCase = true)
+                    CommunityData.locationMatchesState(job.location, jobStateFilter)
 
             val matchesSalary = jobSalaryUnitFilter == JOB_FILTER_ALL || (
                     if (jobSalaryUnitFilter == "Negotiable") {
@@ -78,13 +85,10 @@ object CommunityPostStore {
                     )
 
             matchesSearch && matchesType && matchesState && matchesSalary
-        }
+        }.sortedWith(jobOrder)
 
     val homeJobs: List<JobPost>
-        get() = jobs.sortedWith(
-            compareByDescending<JobPost> { it.isUrgent }
-                .thenByDescending { createdAtMillisForJob(it.id) ?: it.id.toLongOrNull() ?: 0L }
-        )
+        get() = jobs.sortedWith(jobOrder)
 
     fun resetJobFilters() {
         jobTypeFilter = JOB_FILTER_ALL
@@ -102,16 +106,17 @@ object CommunityPostStore {
 
     val filteredDonations: List<DonationPost>
         get() = donations.filter { donation ->
-            val matchesSearch = donationSearchQuery.isBlank() ||
-                    donation.title.contains(donationSearchQuery, ignoreCase = true) ||
-                    donation.location.contains(donationSearchQuery, ignoreCase = true) ||
-                    donation.category.contains(donationSearchQuery, ignoreCase = true)
+            val query = donationSearchQuery.trim()
+            val matchesSearch = query.isBlank() ||
+                    donation.title.contains(query, ignoreCase = true) ||
+                    donation.location.contains(query, ignoreCase = true) ||
+                    donation.category.contains(query, ignoreCase = true)
 
             val matchesCategory = donationCategoryFilter == JOB_FILTER_ALL ||
                     donation.category == donationCategoryFilter
 
             val matchesState = donationStateFilter == JOB_FILTER_ALL ||
-                    donation.location.contains(donationStateFilter, ignoreCase = true)
+                    CommunityData.locationMatchesState(donation.location, donationStateFilter)
 
             matchesSearch && matchesCategory && matchesState
         }
@@ -129,6 +134,7 @@ object CommunityPostStore {
         reservedQuantities.clear()
         myReservedQuantities.clear()
         appliedJobStatuses.clear()
+        myReservationStatuses.clear()
         jobCreatedAtMillis.clear()
         donationCreatedAtMillis.clear()
         donationImageUrls.clear()
@@ -321,12 +327,115 @@ object CommunityPostStore {
         }
     }
 
+    /**
+     * Saves an edited job to Supabase.
+     * Before this fix, editing a job only changed the local list, so the change
+     * disappeared after the app reloaded data from Supabase.
+     */
+    suspend fun updateJobInSupabase(
+        jobId: String,
+        title: String,
+        category: String,
+        location: String,
+        payment: String,
+        paymentUnit: String,
+        description: String,
+        isUrgent: Boolean
+    ): Result<JobPost> {
+        return runCatching {
+            val currentUserId = supabase.auth.currentUserOrNull()?.id
+                ?: error("Please login before editing a job.")
+            val isNegotiable = paymentUnit == "Negotiable"
+
+            val updatedRows = withContext(Dispatchers.IO) {
+                supabase.from("jobs")
+                    .update(
+                        SupabaseJobUpdate(
+                            title = title.trim(),
+                            category = category,
+                            location = location.trim(),
+                            paymentAmount = if (isNegotiable) null else payment.trim().toDoubleOrNull(),
+                            paymentPeriod = paymentUnit,
+                            isNegotiable = isNegotiable,
+                            description = description.trim(),
+                            isUrgent = isUrgent
+                        )
+                    ) {
+                        select()
+                        filter {
+                            eq("id", jobId)
+                            eq("user_id", currentUserId)
+                        }
+                    }
+                    .decodeList<SupabaseJobRow>()
+            }
+
+            val row = updatedRows.firstOrNull()
+                ?: error("Update failed. Please check that you own this job and try again.")
+
+            row.createdAt.toEpochMillisOrNull()?.let { jobCreatedAtMillis[row.id] = it }
+            val post = row.toJobPost(currentUserId)
+            updateJob(post)
+            post
+        }
+    }
+
+    /** Saves an edited donation to Supabase (same problem as jobs: edits were local only). */
+    suspend fun updateDonationInSupabase(
+        donationId: String,
+        itemName: String,
+        itemCategory: String,
+        pickupLocation: String,
+        description: String,
+        quantity: Int
+    ): Result<DonationPost> {
+        return runCatching {
+            val currentUserId = supabase.auth.currentUserOrNull()?.id
+                ?: error("Please login before editing a donation.")
+
+            val updatedRows = withContext(Dispatchers.IO) {
+                supabase.from("donations")
+                    .update(
+                        SupabaseDonationUpdate(
+                            itemName = itemName.trim(),
+                            itemCategory = itemCategory,
+                            pickupLocation = pickupLocation.trim(),
+                            description = description.trim(),
+                            quantity = quantity.coerceAtLeast(1)
+                        )
+                    ) {
+                        select()
+                        filter {
+                            eq("id", donationId)
+                            eq("user_id", currentUserId)
+                        }
+                    }
+                    .decodeList<SupabaseDonationRow>()
+            }
+
+            val row = updatedRows.firstOrNull()
+                ?: error("Update failed. Please check that you own this donation and try again.")
+
+            row.createdAt.toEpochMillisOrNull()?.let { donationCreatedAtMillis[row.id] = it }
+            donationImageUrls[row.id] = row.imageUrl
+            val post = row.toDonationPost(currentUserId)
+            updateDonation(post)
+            post
+        }
+    }
+
     suspend fun deleteJobFromSupabase(jobId: String): Result<Unit> {
         return runCatching {
             supabase.auth.currentUserOrNull()
                 ?: error("Please login before deleting a job.")
 
             withContext(Dispatchers.IO) {
+                runCatching {
+                    supabase.from("job_applications").delete {
+                        filter { eq("job_id", jobId) }
+                    }
+                }
+
                 supabase.from("jobs").delete {
                     filter {
                         eq("id", jobId)
@@ -573,6 +682,7 @@ object CommunityPostStore {
     fun deleteJob(jobId: String) {
         jobs.removeAll { it.id == jobId }
         appliedJobIds.remove(jobId)
+        appliedJobStatuses.remove(jobId)
         jobCreatedAtMillis.remove(jobId)
     }
 
@@ -581,6 +691,7 @@ object CommunityPostStore {
         reservedDonationIds.remove(donationId)
         reservedQuantities.remove(donationId)
         myReservedQuantities.remove(donationId)
+        myReservationStatuses.remove(donationId)
         donationCreatedAtMillis.remove(donationId)
         donationImageUrls.remove(donationId)
     }
@@ -621,6 +732,27 @@ private data class SupabaseJobInsert(
     @SerialName("is_negotiable") val isNegotiable: Boolean,
     val description: String,
     @SerialName("is_urgent") val isUrgent: Boolean = false
+)
+
+@Serializable
+private data class SupabaseJobUpdate(
+    val title: String,
+    val category: String,
+    val location: String,
+    @SerialName("payment_amount") val paymentAmount: Double?,
+    @SerialName("payment_period") val paymentPeriod: String,
+    @SerialName("is_negotiable") val isNegotiable: Boolean,
+    val description: String,
+    @SerialName("is_urgent") val isUrgent: Boolean
+)
+
+@Serializable
+private data class SupabaseDonationUpdate(
+    @SerialName("item_name") val itemName: String,
+    @SerialName("item_category") val itemCategory: String,
+    @SerialName("pickup_location") val pickupLocation: String,
+    val description: String,
+    val quantity: Int
 )
 
 @Serializable

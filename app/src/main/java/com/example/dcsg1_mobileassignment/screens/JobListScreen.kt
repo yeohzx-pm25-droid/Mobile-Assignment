@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -34,6 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
@@ -43,6 +45,8 @@ import com.example.dcsg1_mobileassignment.communityhelp.model.JobPost
 import com.example.dcsg1_mobileassignment.communityhelp.screens.CommunityColors
 import com.example.dcsg1_mobileassignment.communityhelp.screens.CommunityScaffold
 import com.example.dcsg1_mobileassignment.communityhelp.screens.navigateSingleTop
+import com.example.dcsg1_mobileassignment.utils.InputLimits
+import com.example.dcsg1_mobileassignment.utils.limitTo
 
 private val quickJobTypes = listOf(JOB_FILTER_ALL, "Part-time", "Full-time", "One-Time")
 
@@ -74,7 +78,7 @@ fun JobListScreen(navController: NavController) {
 
                 JobSearchBar(
                     query = CommunityPostStore.jobSearchQuery,
-                    onQueryChange = { CommunityPostStore.jobSearchQuery = it },
+                    onQueryChange = { CommunityPostStore.jobSearchQuery = it.limitTo(InputLimits.SEARCH) },
                     activeFilterCount = CommunityPostStore.activeJobFilterCount,
                     onFilterClick = { navController.navigateSingleTop("jobFilter") }
                 )
@@ -90,7 +94,13 @@ fun JobListScreen(navController: NavController) {
             }
 
             if (jobs.isEmpty()) {
-                item { EmptyJobsMessage() }
+                item {
+                    if (CommunityPostStore.isLoadingRemotePosts) {
+                        EmptyJobsMessage("Loading jobs...")
+                    } else {
+                        EmptyJobsMessage("No jobs match your search or filters.")
+                    }
+                }
             }
 
             items(
@@ -130,7 +140,7 @@ private fun JobSearchBar(
             ),
             modifier = Modifier
                 .weight(1f)
-                .height(52.dp)
+                .heightIn(min = 52.dp)
         )
 
         Spacer(Modifier.width(10.dp))
@@ -198,7 +208,7 @@ private fun JobTypeChipsRow(
 }
 
 @Composable
-private fun EmptyJobsMessage() {
+private fun EmptyJobsMessage(message: String) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -206,7 +216,7 @@ private fun EmptyJobsMessage() {
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = "No jobs match your search or filters.",
+            text = message,
             color = CommunityColors.TextMuted,
             fontSize = 13.sp
         )
@@ -230,26 +240,29 @@ fun JobListCard(
     ) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 13.dp)) {
             Row(Modifier.fillMaxWidth()) {
-                Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(end = 10.dp)
+                ) {
                     Text(
                         text = job.title,
                         color = CommunityColors.TextPrimary,
                         fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
                     )
-                    if (CommunityPostStore.appliedJobIds.contains(job.id)) {
-                        Spacer(Modifier.width(6.dp))
-                        Surface(
-                            color = CommunityColors.SoftSurface,
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Text(
-                                text = "Applied",
-                                color = CommunityColors.TextMuted,
-                                fontSize = 9.sp,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                            )
+                    val applied = CommunityPostStore.appliedJobIds.contains(job.id)
+                    if (job.isUrgent || applied) {
+                        Spacer(Modifier.height(5.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            if (job.isUrgent) {
+                                SmallBadge("Urgent", Color(0xFFFFF3E0), Color(0xFFE65100))
+                            }
+                            if (applied) {
+                                SmallBadge("Applied", CommunityColors.SoftSurface, CommunityColors.TextMuted)
+                            }
                         }
                     }
                 }
@@ -263,6 +276,7 @@ fun JobListCard(
                         color = CommunityColors.Green,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
+                        maxLines = 1,
                         modifier = Modifier.padding(horizontal = 9.dp, vertical = 3.dp)
                     )
                 }
@@ -272,7 +286,9 @@ fun JobListCard(
                 text = job.location,
                 color = CommunityColors.TextPrimary,
                 fontSize = 11.sp,
-                lineHeight = 16.sp
+                lineHeight = 16.sp,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
             )
             Text(
                 text = "${job.category} - ${JobTimeFormatter.postedLine(job)}",
@@ -280,5 +296,21 @@ fun JobListCard(
                 fontSize = 10.sp
             )
         }
+    }
+}
+
+@Composable
+private fun SmallBadge(text: String, background: Color, textColor: Color) {
+    Surface(
+        color = background,
+        shape = RoundedCornerShape(8.dp)
+    ) {
+        Text(
+            text = text,
+            color = textColor,
+            fontSize = 9.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
+        )
     }
 }

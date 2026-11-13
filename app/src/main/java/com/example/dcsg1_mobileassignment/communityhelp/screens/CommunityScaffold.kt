@@ -10,7 +10,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -31,10 +31,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.dcsg1_mobileassignment.communityhelp.model.BottomTab
+import com.example.dcsg1_mobileassignment.ui.isLandscape
 
 object CommunityColors {
     val Green = Color(0xFF1B8E3C)
@@ -67,41 +69,45 @@ private fun CommunityBottomBar(
     navController: NavController,
     selected: BottomTab
 ) {
+    val barHeight = if (isLandscape()) 58.dp else 72.dp
+
     Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(92.dp),
+        modifier = Modifier.fillMaxWidth(),
         color = Color.White,
         shadowElevation = 8.dp
     ) {
-        Box(Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .height(barHeight)
+        ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(72.dp)
+                    .height(barHeight)
                     .align(Alignment.TopCenter),
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                BottomItem("Home", Icons.Filled.Home, selected == BottomTab.Home) {
+                BottomItem("Home", Icons.Filled.Home, selected == BottomTab.Home, barHeight) {
                     navController.navigateSingleTop("home")
                 }
-                BottomItem("Jobs", Icons.Filled.Work, selected == BottomTab.Jobs) {
+                BottomItem("Jobs", Icons.Filled.Work, selected == BottomTab.Jobs, barHeight) {
                     navController.navigateSingleTop("jobs")
                 }
                 Spacer(Modifier.width(56.dp))
-                BottomItem("Donation", Icons.Filled.VolunteerActivism, selected == BottomTab.Donation) {
+                BottomItem("Donation", Icons.Filled.VolunteerActivism, selected == BottomTab.Donation, barHeight) {
                     navController.navigateSingleTop("donation")
                 }
-                BottomItem("Profile", Icons.Filled.AccountCircle, selected == BottomTab.Profile) {
+                BottomItem("Profile", Icons.Filled.AccountCircle, selected == BottomTab.Profile, barHeight) {
                     navController.navigateSingleTop("userProfile")
                 }
             }
 
             Box(
                 modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .offset(y = 10.dp)
+                    .align(Alignment.Center)
                     .size(48.dp)
                     .background(CommunityColors.Green, CircleShape)
                     .clickable {
@@ -117,14 +123,6 @@ private fun CommunityBottomBar(
                     fontWeight = FontWeight.Bold
                 )
             }
-
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 7.dp)
-                    .size(width = 108.dp, height = 4.dp)
-                    .background(Color(0x47111611), CircleShape)
-            )
         }
     }
 }
@@ -134,11 +132,12 @@ private fun BottomItem(
     label: String,
     icon: ImageVector,
     selected: Boolean,
+    height: Dp,
     onClick: () -> Unit
 ) {
     Box(
         modifier = Modifier
-            .height(72.dp)
+            .height(height)
             .width(68.dp)
             .clickable { onClick() },
         contentAlignment = Alignment.Center

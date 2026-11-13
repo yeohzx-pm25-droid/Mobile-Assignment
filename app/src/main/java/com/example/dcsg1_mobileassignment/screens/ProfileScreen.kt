@@ -37,6 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
@@ -44,6 +45,9 @@ import com.example.dcsg1_mobileassignment.communityhelp.model.BottomTab
 import com.example.dcsg1_mobileassignment.communityhelp.screens.CommunityColors
 import com.example.dcsg1_mobileassignment.communityhelp.screens.CommunityScaffold
 import com.example.dcsg1_mobileassignment.viewmodel.AuthViewModel
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import com.example.dcsg1_mobileassignment.ui.isLandscape
 
 @Composable
 fun ProfileScreen(
@@ -67,7 +71,11 @@ fun ProfileScreen(
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("No user is logged in.", color = CommunityColors.TextPrimary)
                 Spacer(Modifier.height(20.dp))
-                Button(onClick = { navController.navigate("login") }) {
+                Button(onClick = {
+                    navController.navigate("login") {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }) {
                     Text("Go to Login")
                 }
             }
@@ -75,22 +83,28 @@ fun ProfileScreen(
         return
     }
 
+    val headerHeight = if (isLandscape()) 150.dp else 230.dp
+    val cardOverlap = 40.dp
+
     CommunityScaffold(navController, BottomTab.Profile) { innerPadding ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(CommunityColors.Surface)
                 .padding(innerPadding)
+                .verticalScroll(rememberScrollState())
         ) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(230.dp)
+                    .height(headerHeight)
                     .background(CommunityColors.Green)
-                    .padding(horizontal = 30.dp)
+                    .padding(start = 30.dp, end = 30.dp, bottom = cardOverlap)
             ) {
                 Row(
-                    modifier = Modifier.align(Alignment.CenterStart),
+                    modifier = Modifier
+                        .align(Alignment.CenterStart)
+                        .padding(end = 40.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Box(
@@ -115,13 +129,17 @@ fun ProfileScreen(
                             text = user.fullName.ifBlank { "Student" },
                             color = Color.White,
                             fontSize = 22.sp,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                         Spacer(Modifier.height(4.dp))
                         Text(
                             text = user.email,
                             color = Color.White.copy(alpha = 0.9f),
-                            fontSize = 13.sp
+                            fontSize = 13.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
@@ -139,8 +157,8 @@ fun ProfileScreen(
 
             Surface(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(top = 190.dp),
+                    .fillMaxWidth()
+                    .padding(top = headerHeight - cardOverlap),
                 color = CommunityColors.Surface,
                 shape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp)
             ) {
@@ -186,10 +204,11 @@ fun ProfileScreen(
                     TextButton(
                         onClick = {
                             authViewModel.logout()
+                            // popUpTo(0) clears the whole back stack. The old popUpTo("login") did
+                            // nothing when the app started on Home, so Back could return to the app.
                             navController.navigate("login") {
-                                popUpTo("login") {
-                                    inclusive = true
-                                }
+                                popUpTo(0) { inclusive = true }
+                                launchSingleTop = true
                             }
                         },
                         contentPadding = PaddingValues(0.dp)
