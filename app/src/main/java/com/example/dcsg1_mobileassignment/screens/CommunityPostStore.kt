@@ -777,16 +777,18 @@ private data class JobApplicationStatusUpdate(
     val status: String
 )
 
+// Every field except the ids may be empty in the database, so they are nullable with defaults.
+// A non-null field that comes back null makes the whole Applicants list fail to load.
 @Serializable
 data class JobApplicant(
     val id: String,
     @SerialName("job_id") val jobId: String,
-    @SerialName("applicant_id") val applicantId: String,
-    @SerialName("applicant_name") val applicantName: String,
-    @SerialName("applicant_phone") val applicantPhone: String,
+    @SerialName("applicant_id") val applicantId: String = "",
+    @SerialName("applicant_name") val applicantName: String? = null,
+    @SerialName("applicant_phone") val applicantPhone: String? = null,
     @SerialName("applicant_age") val applicantAge: Int? = null,
-    val message: String = "",
-    val status: String,
+    val message: String? = null,
+    val status: String? = "pending",
     @SerialName("created_at") val createdAt: String? = null
 )
 

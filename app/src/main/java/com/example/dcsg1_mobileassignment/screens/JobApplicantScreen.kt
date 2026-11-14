@@ -56,6 +56,7 @@ fun JobApplicantsScreen(
     var applicants by remember { mutableStateOf<List<JobApplicant>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var loadError by remember { mutableStateOf(false) }
+    var loadErrorText by remember { mutableStateOf("") }
     // IDs currently being accepted/rejected, so a double tap does not send two requests.
     var updatingIds by remember { mutableStateOf(setOf<String>()) }
 
@@ -64,7 +65,11 @@ fun JobApplicantsScreen(
         loadError = false
         CommunityPostStore.loadApplicantsForJob(jobId)
             .onSuccess { applicants = it }
-            .onFailure { loadError = true }
+            .onFailure { e ->
+                loadError = true
+                loadErrorText = e.message.orEmpty()
+                android.util.Log.e("JobApplicants", "Failed to load applicants", e)
+            }
         isLoading = false
     }
 
@@ -87,7 +92,11 @@ fun JobApplicantsScreen(
 
             loadError -> {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("Failed to load applicants. Please try again.", color = CommunityColors.TextMuted)
+                    Text(
+                        text = "Failed to load applicants. Please try again.\n$loadErrorText",
+                        color = CommunityColors.TextMuted,
+                        modifier = Modifier.padding(24.dp)
+                    )
                 }
             }
 
@@ -166,7 +175,7 @@ private fun ApplicantCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = applicant.applicantName,
+                    text = applicant.applicantName ?: "Unknown",
                     color = CommunityColors.TextPrimary,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
@@ -177,13 +186,13 @@ private fun ApplicantCard(
                         .padding(end = 8.dp)
                 )
 
-                StatusBadge(applicant.status)
+                StatusBadge(applicant.status ?: "pending")
             }
 
             Spacer(Modifier.height(6.dp))
 
             Text(
-                text = applicant.applicantPhone,
+                text = applicant.applicantPhone ?: "No phone provided",
                 color = CommunityColors.TextMuted,
                 fontSize = 13.sp
             )
@@ -197,10 +206,10 @@ private fun ApplicantCard(
                 )
             }
 
-            if (applicant.message.isNotBlank()) {
+            if (!applicant.message.isNullOrBlank()) {
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    text = applicant.message,
+                    text = applicant.message.orEmpty(),
                     color = CommunityColors.TextPrimary,
                     fontSize = 12.sp
                 )
